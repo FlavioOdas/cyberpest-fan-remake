@@ -29,9 +29,13 @@ date/time controls for a newborn, saves the typed name on -595 through
 `1038:6f06`, and hides controls on -4. The last-frame hook `1010:502a`
 shows/focuses them; `1010:50e8` refocuses on hover. [obs: original code/data]
 The remake uses an indexed-surface text overlay and `WM_CHAR` in place of the original
-Win16 child edit controls. It formats a compact `dd/MM/yy` date and auto-fits it to
-the narrow field; this is [inf], not a byte-exact port of the original `sShortDate`
-WIN.INI formatting. Editing currently appends/backspaces ANSI-range characters,
+Win16 child edit controls. Date and time follow the original (2026-10-17, Claude):
+`1000:4b9e` reads `[intl] sShortDate` and expands d/dd (tm_mday), m/mm (tm_mon+1),
+yy (tm_year % 100) / yyyy (tm_year + 1900), case-insensitive, copying other characters;
+`1000:4ed6` writes `%d` hour (24 h), `[intl] sTime`, `%.2d` minutes [obs: decompile + asm
+pushes]. Windows still serves `[intl]` from the regional settings, so a modern pt-BR
+system gives `17/10/2026` and `1:21`. The longer modern date is auto-fitted to the narrow
+field [inf: the Win16 control would have clipped it]. Editing currently appends/backspaces ANSI-range characters,
 not the full native edit-control behavior (selection, cursor motion, paste).
 
 Class -189 has a text control read by the pest (`1038:6274` reads its +0xc2 window).

@@ -234,7 +234,7 @@ void GameObject::runCommands(Runner& r, const adm::Node& state) {  // State_Run 
         case kShowAt: timed(Cue::Show, 1); break;
         case kSendAt: timed(Cue::Send, 1); break;
         default:
-            break;  // not yet ported: -157 timer, -6 flag argument semantics, …
+            break;  // the original loader (1000:8d10) knows no other commands
         }
     }
 }
