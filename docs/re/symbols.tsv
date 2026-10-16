@@ -27,6 +27,8 @@
 -519	CLOCK_UPDATE	clock -90 and hands -88/-89 receive this each clock animation cycle; 1008:870c
 -520	CLOCK_HAND_FIRST_STATE	first hand sprite state in modules -88/-89; 1008:854c/85ea
 -521	CLOCK_CUCKOO	spawned by clock -90 on hour change at minute zero; 1008:84ce
+-158	BIN_OPENING_HIT	bin -78 hit area tested against held object position; 1008:755c
+-280	PROP_BIN_ELIGIBLE	bin -78 accepts a held object only when this property is nonzero; 1008:755c
 -306	CMD_INTRO_IMAGE	sprite slot +0x2e, plays first
 -111	CMD_IMAGE	main sprite slot +0x32
 -431	CMD_OUTRO_IMAGE	sprite slot +0x36, plays last

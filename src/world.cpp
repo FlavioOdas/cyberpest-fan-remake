@@ -67,6 +67,13 @@ GameObject* World::find(int32_t id) const {
     return nullptr;
 }
 
+std::vector<GameObject*> World::objectSnapshot() const {
+    std::vector<GameObject*> snapshot;
+    snapshot.reserve(objects_.size());
+    for (const auto& object : objects_) snapshot.push_back(object.get());
+    return snapshot;
+}
+
 int World::count(int32_t id) const {
     int n = 0;
     for (const auto& o : objects_) n += o->id() == id;

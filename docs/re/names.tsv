@@ -524,3 +524,6 @@
 1008:85ea	Clock_UpdateMinuteHand	select 2.5-minute hand sprite
 1008:8682	Clock_OnLastFrame	set cuckoo strike loop count
 1008:870c	Clock_OnEvent	handle clock update message
+1008:7514	Bin_Create	base create hook
+1008:755c	Bin_OnEvent	capture eligible held object on hover
+1008:773a	Bin_OnStateEnd	remove captured objects after close animation

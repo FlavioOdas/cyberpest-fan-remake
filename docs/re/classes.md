@@ -78,6 +78,21 @@ new `enterStateAt` selects these by ordinal rather than collapsing every id=0
 to the same first state. A 22:10 local-time snapshot shows H10/M10 and the
 pest walking. [obs: data and headless runtime]
 
+## Bin (2026-10-16)
+
+Class -78's hover hook `1008:755c` iterates room objects, projects each position
+into the bin runner's hit areas, and captures only objects whose anchor falls in
+-158, whose held flag is set, and whose -280 property is nonzero. Capture clears
+-180 (pickable) and -182 (held), sets property -1, moves the object just behind
+the bin depth, and enters -160 (closing animation). Its state-end hook
+`1008:773a` sends -1 to each captured object, clears the list, then enters
+-161 (opening animation). [obs: original code and module -78]
+
+The remake uses `World::objectSnapshot()` for the original world's indexed
+iteration (`1038:5c38/5c60`). Headless drag of shelf bowl -85 from (180,157)
+to (555,141) shows bin -160 and captured bowl at z=2899 at 2.2 seconds; at
+6.5 seconds the bowl is gone and bin has returned to -108. [obs: runtime]
+
 | class | size | ctor | vtable | overridden slots (offset=function) |
 |---|---|---|---|---|
 | -593 | 0x15e | 1038:3308 | 1038:3e9a | +0x04=1038:4890 +0x14=1010:47c6 +0x34=1010:513a +0x44=1010:502a +0x68=1010:50e8 |
