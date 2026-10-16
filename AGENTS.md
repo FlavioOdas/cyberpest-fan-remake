@@ -37,8 +37,12 @@ and CMake into `~/tools`. Then `source ~/tools/env.sh`. Regenerate analysis outp
 python3 tools/adm_dump.py original/extracted/APP/SLOW/PEST.ADM work/adm
 python3 tools/ne_disasm.py original/extracted/APP/PEST.EXE work/disasm
 "$GHIDRA_HOME/support/analyzeHeadless" work/ghidra CyberPest -import original/extracted/APP/PEST.EXE \
-  -overwrite -scriptPath tools/ghidra -preScript EnableParamId.java -postScript DecompileAll.java work/ghidra/pest.c work/ghidra/functions.tsv
+  -overwrite -scriptPath tools/ghidra -preScript EnableParamId.java -postScript FixChkstk.java -postScript DecompileAll.java work/ghidra/pest.c work/ghidra/functions.tsv
 ```
+
+After the first import, `tools/redecompile.sh` re-applies `FixChkstk.java` (marks MSC `__chkstk`
+frame allocations — without it locals and comparisons decompile as garbage) and the names in
+`docs/re/names.tsv`, then regenerates `work/ghidra/pest.c` (~20 s).
 
 Handy: `python3 tools/gfunc.py sub_1_5604` (or `1000:5604`) prints one decompiled function;
 `python3 tools/symbol_xref.py -178` shows where an ADM symbol id is used in code and data;
