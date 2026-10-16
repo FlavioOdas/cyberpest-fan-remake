@@ -6,6 +6,8 @@
 #include "items.h"
 #include "panels.h"
 #include "pest.h"
+#include "punishments.h"
+#include "room_objects.h"
 #include "world.h"
 
 std::unique_ptr<GameObject> createObjectForClass(int32_t classSymbol, World& world, int32_t moduleId,
@@ -33,8 +35,24 @@ std::unique_ptr<GameObject> createObjectForClass(int32_t classSymbol, World& wor
         return std::make_unique<PhoneBubble>(world, moduleId, module);
     case -98:
         return std::make_unique<Phone>(world, moduleId, module);
+    case -91:
+        return std::make_unique<Mouse>(world, moduleId, module);
+    case -94:
+        return std::make_unique<AudioButton>(world, moduleId, module);
+    case -92:
+        return std::make_unique<PunishmentDisplay>(world, moduleId, module);
+    case -531:
+        return std::make_unique<Weight>(world, moduleId, module);
+    case -534:
+        return std::make_unique<Bomb>(world, moduleId, module);
+    case -550:
+        return std::make_unique<Cannonball>(world, moduleId, module);
+    case -172:
+        return std::make_unique<Cannon>(world, moduleId, module);
+    case -591:
+        return std::make_unique<Powder>(world, moduleId, module);
     default:
-        // Not yet ported classes behave as the generic object (-107) for now.
+        // Classes without overrides of their own behave as the generic object (-107).
         return std::make_unique<GameObject>(world, moduleId, module);
     }
 }

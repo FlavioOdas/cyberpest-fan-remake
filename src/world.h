@@ -56,6 +56,13 @@ public:
         if (attention_) attention_();
     }
     void setAttentionHandler(std::function<void()> h) { attention_ = std::move(h); }
+    // Sound on/off (theApp+0xcc, INI [Options] Audio; 1038:67a6/6788/1d48).
+    bool audioEnabled() const { return audio_; }
+    void setAudioEnabled(bool on) {
+        audio_ = on;
+        if (audioHandler_) audioHandler_(on);
+    }
+    void setAudioHandler(std::function<void(bool)> h) { audioHandler_ = std::move(h); }
     GameObject* spawn(int32_t moduleId, const Vec3& pos, bool facing);
     void remove(GameObject* obj);
     void sendToApp(int32_t message) {
@@ -92,6 +99,8 @@ private:
     SoundPlayer playSound_;
     AppMessage appMessage_;
     std::function<void()> attention_;
+    std::function<void(bool)> audioHandler_;
+    bool audio_ = true;
     GameObject* focus_ = nullptr;
     GameObject* textFocus_ = nullptr;
     int32_t cursor_ = 0;

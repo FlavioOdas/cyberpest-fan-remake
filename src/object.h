@@ -155,6 +155,8 @@ public:
     // First int of a child module (1018:8f6c with a one-element path).
     bool childFirstInt(int32_t childId, int* out) const;
     int32_t heightAboveFloor() const;                            // 1000:781e
+    // Size of the current sprite frame (1000:6088); (0, 0) without a sprite.
+    Point2 spriteSize() const;
 
     // Drawing/hit testing helpers for World.
     const Sprite* shownSprite() const { return shown_; }

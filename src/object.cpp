@@ -406,6 +406,12 @@ bool GameObject::childFirstInt(int32_t childId, int* out) const {
     return false;
 }
 
+Point2 GameObject::spriteSize() const {  // 1000:6088
+    const Sprite* s = runner_ && runner_->current ? runner_->current : nullptr;
+    const Flc* f = s ? s->image(facing_) : nullptr;
+    return f ? Point2{f->width(), f->height()} : Point2{0, 0};
+}
+
 int32_t GameObject::heightAboveFloor() const {  // 1000:781e
     return world_.config().floorMinY - pos_.y + pos_.z - 3000;
 }

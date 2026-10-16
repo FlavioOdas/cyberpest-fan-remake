@@ -83,6 +83,7 @@ bool loadGame(const std::wstring& admPath) {
     }
     loadCursors();
     app.world.setSoundPlayer([](const Sound* s) { app.mixer.play(0, s); });
+    app.world.setAudioHandler([](bool on) { app.mixer.setMuted(!on); });  // audio button -94
     app.world.setAppMessageHandler([](int32_t message) {  // 1000:4768
         if (!app.hwnd) return;
         if (message == kAppClose) PostMessageW(app.hwnd, WM_CLOSE, 0, 0);
