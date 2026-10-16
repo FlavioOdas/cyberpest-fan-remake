@@ -1,5 +1,6 @@
 #include "classes.h"
 
+#include "pest.h"
 #include "world.h"
 
 namespace {
@@ -30,6 +31,8 @@ std::unique_ptr<GameObject> createObjectForClass(int32_t classSymbol, World& wor
     switch (classSymbol) {
     case -593:
         return std::make_unique<Certificate>(world, moduleId, module);
+    case -105:
+        return std::make_unique<Pest>(world, moduleId, module);
     default:
         // Not yet ported classes behave as the generic object (-107) for now.
         return std::make_unique<GameObject>(world, moduleId, module);

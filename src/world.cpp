@@ -66,6 +66,12 @@ GameObject* World::find(int32_t id) const {
     return nullptr;
 }
 
+int World::count(int32_t id) const {
+    int n = 0;
+    for (const auto& o : objects_) n += o->id() == id;
+    return n;
+}
+
 void World::remove(GameObject* obj) {
     for (auto it = objects_.begin(); it != objects_.end(); ++it) {
         if (it->get() == obj) {

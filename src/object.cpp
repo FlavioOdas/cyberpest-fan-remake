@@ -1,6 +1,7 @@
 #include "object.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 #include "symbols.h"
@@ -330,6 +331,70 @@ int32_t GameObject::property(int32_t symbol) const {  // 1000:67c8
 
 void GameObject::moveBy(const Vec3& d) {  // 1038:2a10 (attached children follow [inf])
     pos_ += d;
+}
+
+void GameObject::setWalkTarget(const Vec3& t) {  // 1000:73f6
+    walking_ = true;
+    walkTarget_ = t;
+    walkVelocity_ = Vec3();
+}
+
+void GameObject::walkStep() {  // 1000:7460
+    if (!walking_ || !playingMain()) return;
+    Sprite& s = *runner_->current;
+    if (walkVelocity_ == Vec3()) walkVelocity_ = s.motion;  // one cycle of the walk animation
+    const Vec3 d = walkTarget_ - pos_;
+    const int vx = std::abs(walkVelocity_.x);
+    const int cycles = vx ? (std::abs(d.x) - 1) / vx + 1 : 1;
+    Vec3 step(d.x / std::max(cycles, 1), d.y / std::max(cycles, 1), d.z / std::max(cycles, 1));
+    // step() mirrors x while facing; store the motion so that it points at the target.
+    if (facing_) step.x = -step.x;
+    s.motion = step;
+}
+
+void GameObject::setLoop(Sprite* s, bool enabled, int count) {  // 1038:56ae
+    if (!s) return;
+    s->loop = enabled;
+    s->loopCount = count;
+    s->loopsDone = 0;
+}
+
+bool GameObject::moduleInt(int32_t listId, int index, int* out) const {
+    for (const adm::Node& c : module_->children) {
+        if (c.tag == adm::Tag::List && c.id == listId) {
+            const std::vector<int32_t> v = adm::intValues(c);
+            if (size_t(index) >= v.size()) return false;
+            *out = v[size_t(index)];
+            return true;
+        }
+    }
+    return false;
+}
+
+bool GameObject::childFirstInt(int32_t childId, int* out) const {
+    for (const adm::Node& c : module_->children) {
+        if (c.id != childId) continue;
+        if (c.tag == adm::Tag::List) {
+            const std::vector<int32_t> v = adm::intValues(c);
+            if (v.empty()) return false;
+            *out = v[0];
+            return true;
+        }
+        for (const adm::Node& l : c.children) {  // a state: its first plain data list
+            if (l.tag == adm::Tag::List && l.ref == 0) {
+                const std::vector<int32_t> v = adm::intValues(l);
+                if (v.empty()) return false;
+                *out = v[0];
+                return true;
+            }
+        }
+        return false;
+    }
+    return false;
+}
+
+int32_t GameObject::heightAboveFloor() const {  // 1000:781e
+    return world_.config().floorMinY - pos_.y + pos_.z - 3000;
 }
 
 int GameObject::depthFromY(int y) const { return y + 3000 - world_.config().floorMinY; }

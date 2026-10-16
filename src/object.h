@@ -113,6 +113,8 @@ public:
     virtual void onCancel();                                        // +0x60
     virtual void sendMessage(int32_t message, GameObject* from);    // +0x64
     virtual void onEvent(GameObject* from, int32_t value, int type);// +0x68
+    // Text typed into an object (megaphone speech bubble, 1038:6498); empty for most classes.
+    virtual std::string text() const { return {}; }
 
     // ---- engine services used by object classes ----
     void enterState(int32_t state);  // 1000:6100
@@ -123,13 +125,33 @@ public:
     const Vec3& position() const { return pos_; }
     void setPosition(const Vec3& p) { pos_ = p; }
     void moveBy(const Vec3& d);                       // 1038:2a10 (moves attached children too)
-    bool facing() const { return facing_; }           // +0xb4, sprites drawn mirrored
+    bool facing() const { return facing_; }           // +0xb4, selects the pre-drawn facing images
+    void setFacing(bool f) { facing_ = f; }           // 1038:5b24
     bool held() const { return held_; }               // +0x54
     bool paused() const { return paused_; }           // +0xb2
     GameObject* parent() const { return parent_; }
     void setParent(GameObject* p) { parent_ = p; }
     int depthFromY(int y) const;                      // 1000:77b6
     int yFromDepth(int z) const;                      // 1000:77ea
+
+    // Walking (+0x76 walking, +0x78 target, +0x82 velocity).
+    bool walking() const { return walking_; }                    // 1038:5a86
+    const Vec3& walkTarget() const { return walkTarget_; }       // 1038:5ad2
+    void setWalkTarget(const Vec3& t);                           // 1000:73f6
+    void setWalkTargetOnly(const Vec3& t) { walkTarget_ = t; }   // 1038:5aa4
+    void stopWalking() { walking_ = false; }                     // 1038:5a66
+    void walkStep();                                             // 1000:7460
+    void setAttached(bool a) { attached_ = a; }                  // 1038:5b8e (+0xc0)
+    // Loop control of a sprite (1038:56ae): enabled, count (0 = forever).
+    static void setLoop(Sprite* s, bool enabled, int count);
+    Sprite* mainSprite() const { return runner_ ? runner_->main() : nullptr; }
+    Sprite* currentSprite() const { return runner_ ? runner_->current : nullptr; }
+    bool playingMain() const { return runner_ && runner_->current && runner_->current == runner_->main(); }
+    // Module data: value `index` of the top-level list with id `listId` (Mod_GetInt).
+    bool moduleInt(int32_t listId, int index, int* out) const;
+    // First int of a child module (1018:8f6c with a one-element path).
+    bool childFirstInt(int32_t childId, int* out) const;
+    int32_t heightAboveFloor() const;                            // 1000:781e
 
     // Drawing/hit testing helpers for World.
     const Sprite* shownSprite() const { return shown_; }
@@ -163,6 +185,10 @@ protected:
     bool flagBA_ = false;     // +0xba (-122)
     Point2 grabOffset_;       // +0x62
     GameObject* parent_ = nullptr;  // +0xbc
+    bool attached_ = false;   // +0xc0
+    bool walking_ = false;    // +0x76
+    Vec3 walkTarget_;         // +0x78
+    Vec3 walkVelocity_;       // +0x82
     const Sprite* shown_ = nullptr;
     int enterDepth_ = 0;
 

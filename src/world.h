@@ -48,6 +48,11 @@ public:
 
     // Services for objects.
     GameObject* find(int32_t id) const;
+    int count(int32_t id) const;                       // 1000:0cdc
+    void requestAttention() {                          // 1000:47f6: pop up over other apps
+        if (attention_) attention_();
+    }
+    void setAttentionHandler(std::function<void()> h) { attention_ = std::move(h); }
     GameObject* spawn(int32_t moduleId, const Vec3& pos, bool facing);
     void remove(GameObject* obj);
     void sendToApp(int32_t message) {
@@ -81,6 +86,7 @@ private:
     std::unordered_map<uint32_t, std::unique_ptr<Sound>> sounds_;
     SoundPlayer playSound_;
     AppMessage appMessage_;
+    std::function<void()> attention_;
     GameObject* focus_ = nullptr;
     int32_t cursor_ = 0;
     Point2 mouse_{-1, -1};
