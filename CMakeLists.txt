@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 3.20)
+project(CyberPest LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_executable(cyberpest WIN32
+    src/main.cpp
+    src/adm.cpp
+    src/flc.cpp
+    src/surface.cpp
+    src/audio.cpp
+    src/wav.cpp
+)
+target_compile_definitions(cyberpest PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(cyberpest PRIVATE winmm gdi32 user32)
+
+if(MINGW)
+    # One self-contained exe: no libc++/libunwind DLLs next to it.
+    target_link_options(cyberpest PRIVATE -static)
+endif()
+if(MSVC)
+    set_property(TARGET cyberpest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
