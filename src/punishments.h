@@ -36,7 +36,8 @@ private:
     int restHeight_ = 0;        // +0xc6 (list -546)
 };
 
-// Bomb (class -534): blows the pest up when it explodes inside the pest's area.
+// Bomb (class -534): blows the pest up when its explosion covers the pest. The cannon fires by
+// spawning one at the pointer and detonating it at once (-446).
 class Bomb final : public GameObject {
 public:
     using GameObject::GameObject;

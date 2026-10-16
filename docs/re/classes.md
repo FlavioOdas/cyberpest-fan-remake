@@ -93,6 +93,43 @@ iteration (`1038:5c38/5c60`). Headless drag of shelf bowl -85 from (180,157)
 to (555,141) shows bin -160 and captured bowl at z=2899 at 2.2 seconds; at
 6.5 seconds the bowl is gone and bin has returned to -108. [obs: runtime]
 
+## Punishments, mouse and audio button (2026-10-17, Claude)
+
+All twenty special classes are now ported. These eight live in `src/punishments.*` and
+`src/room_objects.*`:
+
+- **-92 punishment display** (`1008:eaac/ebce`): child module -529 lists the six punishment
+  modules -530..-535 (their ids double as the display's picture states). -537 advances to
+  the next picture unless one of them is already in the room (-538); -539 spawns the shown
+  one at the pointer (`y += height/2`, z 3000), held (-182) and shown (-322). The punch
+  button -93 sends -528 to switch the display on. [obs]
+- **-531 16-ton weight** (`1010:0000/0144/0080`): while held above the pest's head
+  (`1010:05d4`: y < pest.y − pest sprite height) and above the floor band, draw at pest.z+1;
+  while falling, when it passes the head level within its half-width and the pest is on the
+  floor, snap to `pest.y − list -546`, stop falling and send -293 (squash) to the pest;
+  picking it up again sends -453. -423 on the pest blocks it. [obs]
+- **-534 bomb** (`1010:07ea`): on its explosion message -226, if the whole pest sprite
+  rectangle lies inside the explosion sprite rectangle (`1038:1aac` on both pest corners),
+  send -26 to the pest. [obs]
+- **-550 cannonball** (`1010:0b8e/0d10`): remembers whether it starts left of the pest; when
+  it passes the pest's x with vertical overlap and |Δz| ≤ list -551, it moves to the pest
+  (+ offset list -552) and enters -553. [obs]
+- **-172 cannon** (`1010:6986`): hover event -555 sets its x to the pointer; -556 fires —
+  spawns -534 at the pointer (z 3999) and detonates it with -446 if the pointer is on the
+  pest, else spawns -557. The terminator button -97 spawns the cannon. [obs]
+- **-591 flea powder** (`1010:3c0a/3d0a`): while held above the pest within its sprite width,
+  enter/loop -592 (which sends -448 flea spray); otherwise stop looping. [obs]
+- **-91 mouse** (`1008:77da..7eae`, shelf item subclass): runs between its hole -320 and the
+  edges from list -318 (−100, 740); -324 starts a run, end of -325 at the hole enters -328,
+  -327 stops it, -1 returns it to -321. [obs]
+- **-94 audio button** (`1010:06f8`): -164 off, -163 on, -162 picks the current setting;
+  the flag is `theApp+0xcc` (INI `[Options] Audio`) and mutes the mixer. [obs; INI not read yet]
+
+Verified headlessly: punch button → 16-ton picture → drag the weight above the pest and release
+→ pest -293 (PPSQUASH, feet under the weight); terminator button → cannon rises, follows the
+pointer, firing on the pest shows the explosion and the pest then runs off (-468); audio button
+toggles AUDIOON/AUDIOOFF.
+
 | class | size | ctor | vtable | overridden slots (offset=function) |
 |---|---|---|---|---|
 | -593 | 0x15e | 1038:3308 | 1038:3e9a | +0x04=1038:4890 +0x14=1010:47c6 +0x34=1010:513a +0x44=1010:502a +0x68=1010:50e8 |

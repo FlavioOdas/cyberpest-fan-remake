@@ -128,8 +128,9 @@ void Weight::onEvent(GameObject* from, int32_t value, int type) {  // 1010:0080
 void Bomb::onEvent(GameObject* from, int32_t value, int type) {  // 1010:07ea
     if (type == 0 && value == -226) {  // exploding
         if (GameObject* pest = world_.find(kPest)) {
-            const Rect pestRect = spriteRect(*pest), bomb = spriteRect(*this);
-            if (pestRect.contains(bomb.left, bomb.top) && pestRect.contains(bomb.right, bomb.bottom)) {
+            // The whole pest must be inside the explosion (1038:1aac on both pest corners).
+            const Rect pestRect = spriteRect(*pest), blast = spriteRect(*this);
+            if (blast.contains(pestRect.left, pestRect.top) && blast.contains(pestRect.right, pestRect.bottom)) {
                 pest->sendMessage(-26, this);  // blown up
             }
         }
