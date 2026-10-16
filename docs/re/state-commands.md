@@ -93,7 +93,8 @@ subclass, vtable `1038:5054`).
   vtbl+0x68 `OnEvent(msg, type 0)`. Target `-117` = the app/director (`1000:4768`).
   Object lookup (`1000:6982`): `-204` self, `-485` parent object, else room object by id.
 - `-4 [obj]` remove: send `-41` to it, then remove from the room. `-6 [obj, x, y, z, ?]` spawn
-  (`1000:6aa0` → `CreateObjectForModule` at a position). `-8 [obj]` resume (paused flag `+0xb2 =
-  0`), `-10 [obj]` pause (`+0xb2 = 1`, property `-322`).
+  (`1000:6aa0` → `CreateObjectForModule` at a position). `-8 [obj]` hide (`+0xb2 = 0`),
+  `-10 [obj]` show (`+0xb2 = 1`, property `-322`). Hidden objects continue animating and firing
+  cues; see the visibility evidence in `engine-runtime.md`.
 - **Hit areas** are relative to the sprite's top-left; image anchor = bottom-centre at (x, y)
   (confirmed by the `ShowHitAreas` debug drawer `1000:a6e2`; door handle lines up).

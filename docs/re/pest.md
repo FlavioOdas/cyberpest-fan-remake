@@ -70,7 +70,10 @@ s), `f_128/12a/12c`=-415 5,10,20, `f_12e/130`=-416 25,75 (stomach bands), `f_132
   (`e17e` → pop-up `1000:47f6`), mouse visits (`e2a4`), phone calls (`e3a8` → `c9ee`: -209 vet
   when ill, -208 keeper when messy, -207 therapist when mood extreme); every 2 h of age send
   -165 to the food flap (-74).
+- **Entrance**: top-level property -322=1 means visible. Hatch message -153 sets mode 2 and
+  enters -324; the ordinary walk logic brings the pest from x=-100 into the room. See
+  `engine-runtime.md` for the visibility correction and original drawing evidence.
 - **Events** (`5b54`): click → `f_178`; -502 shock, -494 snack (mood ±`f_13e`), -448 flea spray,
   -202/-201 megaphone teach/command (`b5a2`), -27..-40 feed/clean/stomach changes
-  (`c3b6`, `c426`, `c472`, `bc00` reward/punish), -1 wake from the hatch (`6736`), …
+  (`c3b6`, `c426`, `c472`, `bc00` reward/punish), -1 re-enter after removal (`6736`), …
 - **Save** (`8f32` → `PEST.TMP` renamed to `PEST.CFG`, magic 0x3b978a5e) / **load** (`962c`).

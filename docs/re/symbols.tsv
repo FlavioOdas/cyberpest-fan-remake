@@ -8,7 +8,7 @@
 -182	PROP_54	SetProperty: bool field 0x54, recomputes rect + redraw when set (visible?)
 -279	PROP_B8	SetProperty: bool field 0xb8
 -309	PROP_6A	SetProperty: bool field 0x6a, redraw when set
--322	PROP_B2	SetProperty: bool field 0xb2, propagates to child sprite
+-322	PROP_VISIBLE	1000:7b80 -> 1028:dbf0/dc68 show/hide; 1028:cce8 draw gate; 1=visible, 0=hidden
 -323	PROP_B4	SetProperty: bool field 0xb4
 -105	CLASS_PEST	factory 1000:5604: new 0x2a4, ctor 1038:2d8e, vtable 1038:3f9a
 -107	CLASS_OBJECT	factory 1000:5604: new 0xc2, ctor 1038:2d58, vtable 1038:40de (generic room object)
@@ -29,4 +29,3 @@
 -431	CMD_OUTRO_IMAGE	sprite slot +0x36, plays last
 -183	CMD_LOOP	sprite +0x94 = 1, +0x98 = count
 -112	CMD_REDRAW_LAST	sprite +0x96
--322	PROP_PAUSED	object +0xb2 (also -8 resume / -10 pause)

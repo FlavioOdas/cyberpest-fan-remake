@@ -12,7 +12,7 @@ namespace {
 // State command symbols (docs/re/state-commands.md).
 enum : int32_t {
     kSet = -2, kSetAt = -3, kRemove = -4, kRemoveAt = -5, kSpawn = -6, kSpawnAt = -7,
-    kResume = -8, kResumeAt = -9, kPause = -10, kPauseAt = -11, kOnClick = -12, kOnRelease = -13,
+    kHide = -8, kHideAt = -9, kShow = -10, kShowAt = -11, kOnClick = -12, kOnRelease = -13,
     kOnHover = -170, kOnMessage = -121, kIntro = -306, kMain = -111, kOutro = -431,
     kHoldLast = -112, kLoop = -183, kHitArea = -114, kSound = -116, kSend = -119, kSendAt = -176,
     kNext = -132, kRandomNext = -151, kMotion = -326, kEndMove = -455, kOffset = -548, kMoveRange = -493,
@@ -24,7 +24,7 @@ enum : int32_t {
     kTargetApp = -117, kTargetSelf = -204, kTargetParent = -485,
     kMsgRemoved = -41, kMsgRemoveSelf = -1, kMsgDropped = -184, kMsgLandedSoft = -449, kMsgLandedHard = -450,
     kMsgCleaned = -136, kHoverClean = -133, kSponge = -77,
-    kPropHeld = -182, kPropNoFloorClamp = -181, kPropFalling = -309, kPropPaused = -322, kPropFacing = -323,
+    kPropHeld = -182, kPropNoFloorClamp = -181, kPropFalling = -309, kPropVisible = -322, kPropFacing = -323,
     kPropPickable = -180, kPropFallsWhenReleased = -279, kPropCleanable = -122,
 };
 
@@ -69,7 +69,7 @@ void GameObject::enterState(int32_t state) {  // 1000:6100
     if (!module || enterDepth_ > 16) return;  // states without sprites can chain
     ++enterDepth_;
     if (runner_) {
-        if (runner_->current) runner_->current->paused = true;
+        shown_ = nullptr;
         retired_.push_back(std::move(runner_));
     }
     state_ = state;
@@ -105,7 +105,6 @@ void GameObject::startSprite(Runner& r, Sprite* s) {
     s->ended = false;
     s->applied = Vec3();
     s->nextFrameAt = world_.now();
-    s->paused = paused_;
     shown_ = s;
 }
 
@@ -210,14 +209,14 @@ void GameObject::runCommands(Runner& r, const adm::Node& state) {  // State_Run 
         case kSet: untimed(Cue::SetProperty); break;
         case kRemove: untimed(Cue::Remove); break;
         case kSpawn: untimed(Cue::Spawn); break;
-        case kResume: untimed(Cue::Resume); break;
-        case kPause: untimed(Cue::Pause); break;
+        case kHide: untimed(Cue::Hide); break;
+        case kShow: untimed(Cue::Show); break;
         case kSend: untimed(Cue::Send); break;
         case kSetAt: timed(Cue::SetProperty, 1); break;
         case kRemoveAt: timed(Cue::Remove, 1); break;
         case kSpawnAt: timed(Cue::Spawn, 1); break;
-        case kResumeAt: timed(Cue::Resume, 1); break;
-        case kPauseAt: timed(Cue::Pause, 1); break;
+        case kHideAt: timed(Cue::Hide, 1); break;
+        case kShowAt: timed(Cue::Show, 1); break;
         case kSendAt: timed(Cue::Send, 1); break;
         default:
             break;  // not yet ported: -157 timer, -6 flag argument semantics, …
@@ -233,8 +232,8 @@ void GameObject::runCue(const Cue& c) {  // 1000:7be4
     case Cue::Spawn: cueSpawn(arg(0), Vec3(arg(1), arg(2), arg(3))); break;
     case Cue::SetProperty: setProperty(arg(0), arg(1)); break;
     case Cue::Remove: cueRemove(arg(0)); break;
-    case Cue::Resume: cueResume(arg(0)); break;
-    case Cue::Pause: cuePause(arg(0)); break;
+    case Cue::Hide: cueHide(arg(0)); break;
+    case Cue::Show: cueShow(arg(0)); break;
     }
 }
 
@@ -272,12 +271,12 @@ void GameObject::cueRemove(int32_t target) {  // 1000:6b9a
     }
 }
 
-void GameObject::cueResume(int32_t target) {  // 1000:6c02
-    if (GameObject* t = findTarget(target)) t->setProperty(kPropPaused, 0);
+void GameObject::cueHide(int32_t target) {  // 1000:6c02
+    if (GameObject* targetObject = findTarget(target)) targetObject->setProperty(kPropVisible, 0);
 }
 
-void GameObject::cuePause(int32_t target) {  // 1000:6c4a
-    if (GameObject* t = findTarget(target)) t->setProperty(kPropPaused, 1);
+void GameObject::cueShow(int32_t target) {  // 1000:6c4a
+    if (GameObject* targetObject = findTarget(target)) targetObject->setProperty(kPropVisible, 1);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -289,10 +288,7 @@ void GameObject::setProperty(int32_t symbol, int32_t value) {  // 1000:63ee
     case sym::Y: pos_.y = value; break;
     case sym::Z: pos_.z = value; break;
     case kPropFacing: facing_ = value != 0; break;
-    case kPropPaused:
-        paused_ = value != 0;
-        if (runner_ && runner_->current) runner_->current->paused = paused_;
-        break;
+    case kPropVisible: visible_ = value != 0; break;
     case kPropFalling:
         falling_ = value != 0;
         if (falling_) fallStartY_ = pos_.y;
@@ -315,7 +311,7 @@ int32_t GameObject::property(int32_t symbol) const {  // 1000:67c8
     case sym::Y: return pos_.y;
     case sym::Z: return pos_.z;
     case kPropFacing: return facing_;
-    case kPropPaused: return paused_;
+    case kPropVisible: return visible_;
     case kPropFalling: return falling_;
     case kPropFallsWhenReleased: return fallsWhenReleased_;
     case kPropHeld: return held_;
@@ -405,7 +401,7 @@ int GameObject::yFromDepth(int z) const { return z - 3000 + world_.config().floo
 
 void GameObject::step(uint32_t nowMs) {  // Sprite_OnFrame 1000:7df8
     Runner* rp = runner_.get();
-    if (!rp || !rp->current || rp->done || paused_) {
+    if (!rp || !rp->current || rp->done) {
         onFrame();
         return;
     }

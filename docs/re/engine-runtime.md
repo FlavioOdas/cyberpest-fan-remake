@@ -13,15 +13,15 @@ Complements `state-commands.md`. Offsets are into the original C++ objects. [obs
 | +0x20 | `1000:6a52` | cue move target by vector (`1038:2a10` MoveBy, recursive over attached children +0xbc) |
 | +0x24 | `1000:6aa0` | spawn object (`-6/-7`) |
 | +0x28 | `1000:6b9a` | remove object (`-4/-5`): send -41, World remove |
-| +0x2c | `1000:6c02` | resume (`-8/-9`) +0xb2 = 0 |
-| +0x30 | `1000:6c4a` | pause (`-10/-11`) +0xb2 = 1 |
+| +0x2c | `1000:6c02` | hide (`-8/-9`) +0xb2 = 0 |
+| +0x30 | `1000:6c4a` | show (`-10/-11`) +0xb2 = 1 |
 | +0x34 | stub | **state started** (called at the end of State_Run setup `1000:a27c`) |
 | +0x38 | stub | **state ended** (runner done) |
 | +0x3c | stub | **sprite started** (sprite) |
 | +0x40 | stub | ? |
 | +0x44 | stub | ? (pest overrides: walking/target checks) |
 | +0x48 | stub | sprite finished (from Runner_OnSpriteFinished) |
-| +0x4c | `1000:6c92` | per-frame: falling under gravity (+0x6a / prop -309), then sync sprite pos/pause |
+| +0x4c | `1000:6c92` | per-frame: falling under gravity (+0x6a / prop -309), then sync sprite position/visibility |
 | +0x50 | `1000:718c` | hover tick (point) → runner +0x2c → event type 3 |
 | +0x54 | `1000:6f84` | mouse move (point): if held (+0x54, prop -182) follow pointer with floor clamp/drop; → runner +0x2c (type 3) |
 | +0x58 | `1000:71fa` | button down (point) → runner +0x30 → event type 1 |
@@ -32,7 +32,7 @@ Complements `state-commands.md`. Offsets are into the original C++ objects. [obs
 
 Object fields: +0x4e runner, +0x52 state id, +0x54 held (-182), +0x56 no-floor-clamp (-181),
 +0x6a falling (-309), +0x76 walking, +0x78 walk target, +0x82 walk velocity, +0x8c property
-list, +0xa8 position {x,y,z}, +0xb2 paused (-322), +0xb4 facing/flipped (-323), +0xb6 (-180),
+list, +0xa8 position {x,y,z}, +0xb2 visible (-322), +0xb4 facing/flipped (-323), +0xb6 (-180),
 +0xb8 falls when released (-279), +0xba (-122), +0xbc parent object, +0xc0 attached flag.
 
 ## Input (room/"screen" object, segment 1)
@@ -60,4 +60,16 @@ object sets the cursor (hit area cursor, or the pressed cursor while the button 
 - Falling (`1000:6c92`): while +0x6a, add gravity (config -47 × -49 per frame) and land at the
   floor depth (sends a landing message).
 - Cue types (`1000:7be4`): 0 send (+0x1c), 1 move (+0x20), 2 spawn (+0x24), 3 set property,
-  4 remove (+0x28), 5 resume (+0x2c), 6 pause (+0x30) [4–6 inferred from the slot order].
+  4 remove (+0x28), 5 hide (+0x2c), 6 show (+0x30).
+
+## Visibility (corrected 2026-10-16)
+
+`-322` is **visible**, not paused. `1000:7b80` maps nonzero to sprite vtable +0x34
+(`1028:dbf0`, increments the negative hide counter +0x58 towards zero and clears bit 0 of
++0x66), and zero to +0x38 (`1028:dc68`, decrements the hide counter and sets bit 0).
+The drawing function `1028:cce8` skips rendering when bit 0 is set. Animation advancement
+(`1028:ca78`) tests bit 1 instead, so hiding does not stop animation or event cues.
+Room placements default to visible=1 (`1000:055b`); a sixth placement value overrides it.
+The pest's top-level `[-322, 1]` therefore keeps it visible. The hatch sends `-153`, which
+sets mode 2 and enters -324; the normal walking logic brings it in from x=-100. No extra
+wake-up or show message is needed. `1008:6736` handles later re-entry after removal (-1).

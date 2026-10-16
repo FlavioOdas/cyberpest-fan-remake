@@ -13,11 +13,14 @@
 1000:63ee	Object_SetProperty	(obj, value, symbol): X/Y/Z + bool flags, else generic property list at +0x8c
 1000:67c8	Object_GetProperty	(obj, symbol) inverse of Object_SetProperty
 1000:6982	Object_FindTarget	-204 self, -485 parent, else room lookup
+1000:6c02	Object_HideTarget	vtbl+0x2c; -8/-9 clear target visibility
+1000:6c4a	Object_ShowTarget	vtbl+0x30; -10/-11 set target visibility
 1000:6e5c	Object_OnEvent	vtbl+0x68 (value, type) -> runner event match
 1000:73b0	Object_SendMessage	vtbl+0x64
 1000:73f6	Object_SetWalkTarget	+0x76=1, target point +0x78, velocity +0x82 = 0
 1000:77b6	Object_DepthFromY	z = y + 3000 - floorMinY(DAT_2dac)
 1000:77ea	Object_YFromDepth	y = z - 3000 + floorMinY
+1000:7b80	Sprite_SetVisible	sets sprite hide count through vtbl+0x34 show / +0x38 hide; not animation pause
 1000:7df8	Sprite_OnFrame	per-frame step: sound, cues, motion, end/loop handling
 1000:8d10	State_Run	executes a state module's command lists (docs/re/state-commands.md)
 1000:9fbe	State_AddHitArea	command -114
@@ -313,6 +316,9 @@
 1028:6866	vfn_1028_6866	vtable/callback target (auto)
 1028:810a	vfn_1028_810a	vtable/callback target (auto)
 1028:bb0e	vfn_1028_bb0e	vtable/callback target (auto)
+1028:cce8	Sprite_Draw	blits only when flags +0x66 bit 0 is clear
+1028:dbf0	Sprite_Show	increments negative hide count +0x58; clears hidden bit when count reaches zero
+1028:dc68	Sprite_Hide	decrements hide count +0x58; sets hidden bit on first hide
 1030:067c	__chkstk	MSC stack probe, AX = locals size
 1030:3cde	abs
 1030:3d3e	vfn_1030_3d3e	vtable/callback target (auto)

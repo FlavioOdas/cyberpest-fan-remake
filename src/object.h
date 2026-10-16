@@ -19,7 +19,7 @@ class GameObject;
 
 // A command scheduled on a sprite's timeline (1000:7be4).
 struct Cue {
-    enum Kind { Send, Move, Spawn, SetProperty, Remove, Resume, Pause };
+    enum Kind { Send, Move, Spawn, SetProperty, Remove, Hide, Show };
     int frame = 0;  // -1 = when the animation ends
     Kind kind = Send;
     std::vector<int32_t> args;
@@ -38,7 +38,6 @@ struct Sprite {
     int loopsDone = 0;           // +0x9a
     bool holdLastFrame = false;  // +0x96 (-112)
     bool ended = false;          // +0xc4
-    bool paused = false;
     Vec3 offset;                 // +0x9c draw offset (-548)
     Vec3 motion;                 // +0xa6 displacement over one cycle (-326)
     Vec3 endMove;                // +0xb0 displacement when the animation ends (-455)
@@ -97,8 +96,8 @@ public:
     virtual void cueMove(int32_t target, const Vec3& delta);        // +0x20
     virtual void cueSpawn(int32_t module, const Vec3& offset);      // +0x24
     virtual void cueRemove(int32_t target);                         // +0x28
-    virtual void cueResume(int32_t target);                         // +0x2c
-    virtual void cuePause(int32_t target);                          // +0x30
+    virtual void cueHide(int32_t target);                           // +0x2c
+    virtual void cueShow(int32_t target);                           // +0x30
     virtual void onStateStart() {}                                  // +0x34
     virtual void onStateEnd() {}                                    // +0x38
     virtual void onSpriteStart(Sprite&) {}                          // +0x3c
@@ -128,7 +127,7 @@ public:
     bool facing() const { return facing_; }           // +0xb4, selects the pre-drawn facing images
     void setFacing(bool f) { facing_ = f; }           // 1038:5b24
     bool held() const { return held_; }               // +0x54
-    bool paused() const { return paused_; }           // +0xb2
+    bool visible() const { return visible_; }         // +0xb2 (1000:7b80)
     GameObject* parent() const { return parent_; }
     void setParent(GameObject* p) { parent_ = p; }
     int depthFromY(int y) const;                      // 1000:77b6
@@ -178,7 +177,7 @@ protected:
     bool noFloorClamp_ = false;  // +0x56 (-181)
     bool falling_ = false;    // +0x6a (-309)
     int fallStartY_ = 0;      // +0x6c
-    bool paused_ = false;     // +0xb2 (-322)
+    bool visible_ = true;     // +0xb2 (-322)
     bool facing_ = false;     // +0xb4 (-323)
     bool flagB6_ = false;     // +0xb6 (-180)
     bool fallsWhenReleased_ = false;  // +0xb8 (-279)

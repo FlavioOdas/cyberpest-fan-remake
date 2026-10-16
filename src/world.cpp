@@ -147,7 +147,7 @@ void World::mouseLeave() {
 void World::draw(Surface& target) const {
     std::vector<const GameObject*> order;
     for (const auto& o : objects_) {
-        if (o->shownSprite() && o->shownSprite()->flc) order.push_back(o.get());
+        if (o->visible() && o->shownSprite() && o->shownSprite()->flc) order.push_back(o.get());
     }
     std::stable_sort(order.begin(), order.end(),
                      [](const GameObject* a, const GameObject* b) { return a->position().z < b->position().z; });
@@ -185,7 +185,7 @@ std::string World::describe() const {
         const Sprite* s = o->shownSprite();
         std::snprintf(line, sizeof line, "%5d class=%5d state=%5d pos=(%d,%d,%d) %s frame=%d%s%s%s\n", o->id(),
                       o->module()->ref, o->state(), o->position().x, o->position().y, o->position().z,
-                      s ? s->name.c_str() : "-", s ? s->frame : 0, o->paused() ? " paused" : "",
+                      s ? s->name.c_str() : "-", s ? s->frame : 0, o->visible() ? "" : " hidden",
                       o->runner() && o->runner()->done ? " done" : "", o->facing() ? " facing" : "");
         out += line;
     }
