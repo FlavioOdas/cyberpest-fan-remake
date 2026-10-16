@@ -1,0 +1,13 @@
+# Original game files and anything derived from them. Never commit these:
+# the remake loads assets from the user's own copy at runtime.
+/original/
+/work/
+
+# Build output
+/build/
+*.exe
+*.obj
+*.o
+
+__pycache__/
+*.pyc

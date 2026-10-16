@@ -1,0 +1,36 @@
+# CyberPest remake — agent guide
+
+Goal: make CyberPest (1996, Scratch 'n' Sniff / EMG; a 16-bit Windows 3.1 "desktop pet")
+run natively on Windows 11 **without emulators or extra software**, by reverse engineering
+the original program and rebuilding it as a modern native Win32 app that loads the
+user's original data file (`PEST.ADM`) at runtime.
+
+## Start here (every session)
+
+1. Read `docs/CHECKPOINTS.md` — the **current state** section and the last log entry tell
+   you exactly where work stopped and what to do next.
+2. Read `docs/PLAN.md` for milestones and the architecture decision.
+3. Format/code findings live in `docs/formats/` and `docs/re/`.
+
+## Ground rules
+
+- **Never commit original game files or anything extracted/derived from them** (EXE,
+  DLLs, PEST.ADM, decoded sprites, WAVs, full disassembly listings). They live in
+  `original/` and `work/`, both gitignored. Short quotes of disassembly in docs are fine.
+- If `original/` is missing, run `tools/bootstrap.sh` (needs the user's
+  `CyberPest.zip`, default `/mnt/c/Users/odasf/Downloads/CyberPest.zip`).
+- Python tooling must use the **standard library only** (no pip available on this machine).
+- Every finding goes in a doc with how it was established (observed in bytes, inferred,
+  or unknown). Do not present guesses as facts.
+- **Checkpoint discipline:** after each meaningful step, append a dated entry to
+  `docs/CHECKPOINTS.md` and update its "Current state" section, then commit locally.
+  Do not push unless the user asks.
+- REA/Hopper cannot open 16-bit NE executables; use `tools/` (objdump `-m i8086`) instead.
+
+## Layout
+
+- `tools/` — RE and extraction tools (stdlib Python)
+- `docs/` — plan, checkpoints, format and code notes
+- `src/` — the remake (C++17, Win32, CMake) — created at milestone M3
+- `original/` — gitignored: `installer/` (zip contents) and `extracted/` (installed files)
+- `work/` — gitignored: generated disassembly, dumped assets, scratch output
