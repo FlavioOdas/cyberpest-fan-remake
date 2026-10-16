@@ -1,6 +1,7 @@
 #include "adm.h"
 
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 
 namespace adm {
@@ -20,7 +21,7 @@ std::string cString(const uint8_t* p, size_t max) {
 }  // namespace
 
 bool Database::load(const std::wstring& path, std::string* error) {
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(std::filesystem::path(path), std::ios::binary);
     if (!in) {
         *error = "cannot open file";
         return false;

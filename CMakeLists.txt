@@ -13,11 +13,11 @@ add_executable(cyberpest WIN32
     src/wav.cpp
 )
 target_compile_definitions(cyberpest PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
-target_link_libraries(cyberpest PRIVATE winmm gdi32 user32)
+target_link_libraries(cyberpest PRIVATE winmm gdi32 user32 shell32)
 
 if(MINGW)
     # One self-contained exe: no libc++/libunwind DLLs next to it.
-    target_link_options(cyberpest PRIVATE -static)
+    target_link_options(cyberpest PRIVATE -static -municode)
 endif()
 if(MSVC)
     set_property(TARGET cyberpest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
