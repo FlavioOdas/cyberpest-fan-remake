@@ -32,3 +32,11 @@ InstallShield 3 (Stirling, 1994). Game files are inside `DATA.Z`.
 - `PEST.INI [Cache] CacheUsage=…`, `MaxCacheSize=2048`.
 - `WAVEMIX.INI [default] WaveBlockLen=2048`.
 - Program group + optional StartUp entry. Version string `1.1a`; README says 1.11.
+
+## Native extraction (2026-10-17, Claude)
+
+`src/installer.cpp` ports `tools/is3x.py` to C++ so the remake can import game data on
+first run: same header/table offsets, blast-style canonical Huffman decoding. It picks the
+`PEST.ADM` whose folder ends in `SLOW` (the full-frame-rate copy). Verified: `cyberpest.exe
+--import DATA.Z --out x.adm` produced a file byte-identical to the Python extraction
+(17,330,506 bytes, ~0.5 s); a non-archive file is rejected with a message.

@@ -8,18 +8,24 @@
 //   --type <text,ms>   with --snapshot: type into the active text field; repeatable
 //   --dump              with --snapshot: print every object's state to stdout
 //   --popup <reason>    with --snapshot: draw the attention pop-up (e.g. -601) instead (24-bit BMP)
+//   --startup on|off    add or remove the "run when Windows starts" entry, then exit
+//   --import <file>     copy PEST.ADM, or extract it from the original installer's DATA.Z,
+//                       to --out (default %APPDATA%\CyberPest\PEST.ADM), then exit
 #include <windows.h>
+#include <commdlg.h>
 #include <shellapi.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "adm.h"
 #include "attention.h"
+#include "installer.h"
 #include "audio.h"
 #include "flc.h"
 #include "surface.h"
@@ -80,6 +86,76 @@ void readIniSettings() {  // App_ReadIniSettings 1000:28ce
     c.gotRabies = iniInt(L"Cheats", L"GotRabies", 0);
     c.onHeat = iniInt(L"Cheats", L"OnHeat", 0);
     app.world.setCheats(c);
+}
+
+bool fileExists(const std::wstring& path) { return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES; }
+
+std::wstring dataDirectory() {  // %APPDATA%\CyberPest, where the save also lives
+    const wchar_t* appData = _wgetenv(L"APPDATA");
+    std::wstring dir = appData ? std::wstring(appData) + L"\\CyberPest" : exeDirectory();
+    CreateDirectoryW(dir.c_str(), nullptr);
+    return dir;
+}
+
+bool readFile(const std::wstring& path, std::vector<uint8_t>* out) {
+    FILE* f = _wfopen(path.c_str(), L"rb");
+    if (!f) return false;
+    std::fseek(f, 0, SEEK_END);
+    const long size = std::ftell(f);
+    std::fseek(f, 0, SEEK_SET);
+    out->resize(size > 0 ? size_t(size) : 0);
+    const bool ok = size > 0 && std::fread(out->data(), 1, out->size(), f) == out->size();
+    std::fclose(f);
+    return ok;
+}
+
+// PEST.ADM from a file the player picked: the ADM itself, or the original installer's DATA.Z
+// (the SLOW = full-frame-rate copy, as the installer used on fast machines).
+bool importGameData(const std::wstring& source, const std::wstring& target, std::wstring* error) {
+    std::vector<uint8_t> bytes, adm;
+    if (!readFile(source, &bytes)) return *error = L"Can't read " + source + L".", false;
+    if (bytes.size() >= 4 && std::memcmp(bytes.data(), "RIFF", 4) == 0) {
+        adm = std::move(bytes);
+    } else {
+        std::string why;
+        if (!installer::extract(bytes, "PEST.ADM", "SLOW", &adm, &why)) return *error = widen(why), false;
+    }
+    const std::wstring tmp = target + L".tmp";
+    FILE* f = _wfopen(tmp.c_str(), L"wb");
+    if (!f) return *error = L"Can't write " + target + L".", false;
+    const bool ok = std::fwrite(adm.data(), 1, adm.size(), f) == adm.size();
+    if (std::fclose(f) != 0 || !ok || !MoveFileExW(tmp.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+        DeleteFileW(tmp.c_str());
+        return *error = L"Can't write " + target + L".", false;
+    }
+    return true;
+}
+
+// First run without game data: ask for the original disc or download.
+std::wstring askForGameData() {
+    const std::wstring text =
+        L"CyberPest needs the data from your original CyberPest disc or download.\n\n"
+        L"Next, choose the original installer's DATA.Z (on the CD, or inside CyberPest.zip - "
+        L"open the zip in Explorer and extract it first), or a PEST.ADM file.\n\n"
+        L"CyberPest copies what it needs to " + dataDirectory() + L".";
+    const int answer = MessageBoxW(nullptr, text.c_str(), L"CyberPest", MB_OKCANCEL | MB_ICONINFORMATION);
+    if (answer != IDOK) return {};
+    for (;;) {
+        wchar_t file[MAX_PATH] = L"";
+        OPENFILENAMEW ofn = {sizeof ofn};
+        ofn.lpstrFilter = L"CyberPest data (DATA.Z, PEST.ADM)\0DATA.Z;PEST.ADM;*.Z;*.ADM\0All files\0*.*\0";
+        ofn.lpstrFile = file;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.lpstrTitle = L"Find DATA.Z or PEST.ADM from your original CyberPest";
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+        if (!GetOpenFileNameW(&ofn)) return {};
+        const std::wstring target = dataDirectory() + L"\\PEST.ADM";
+        std::wstring error;
+        if (importGameData(file, target, &error)) return target;
+        if (MessageBoxW(nullptr, (error + L"\n\nTry another file?").c_str(), L"CyberPest",
+                        MB_RETRYCANCEL | MB_ICONWARNING) != IDRETRY)
+            return {};
+    }
 }
 
 // [Files] ADB, as written by the original installer, when that file exists.
@@ -185,6 +261,28 @@ void present(HWND hwnd, HDC dc) {
                   app.screen.pixels(), reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS, SRCCOPY);
 }
 
+// "Run CyberPest on startup?" (the original installer's StartUp group icon): a per-user
+// Run entry, toggled from the window's system menu.
+constexpr UINT kSysRunAtStartup = 0x0010;
+constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+bool runsAtStartup() {
+    return RegGetValueW(HKEY_CURRENT_USER, kRunKey, L"CyberPest", RRF_RT_REG_SZ, nullptr, nullptr, nullptr) ==
+           ERROR_SUCCESS;
+}
+
+bool setRunAtStartup(bool on) {
+    if (!on) {
+        const LSTATUS r = RegDeleteKeyValueW(HKEY_CURRENT_USER, kRunKey, L"CyberPest");
+        return r == ERROR_SUCCESS || r == ERROR_FILE_NOT_FOUND;
+    }
+    wchar_t path[MAX_PATH];
+    const DWORD n = GetModuleFileNameW(nullptr, path, MAX_PATH);
+    const std::wstring command = L"\"" + std::wstring(path, n) + L"\"";
+    return RegSetKeyValueW(HKEY_CURRENT_USER, kRunKey, L"CyberPest", REG_SZ, command.c_str(),
+                           DWORD((command.size() + 1) * sizeof(wchar_t))) == ERROR_SUCCESS;
+}
+
 POINT toGame(HWND hwnd, LPARAM lp) {
     const RECT to = gameRect(hwnd);
     const int w = std::max<int>(1, to.right - to.left), h = std::max<int>(1, to.bottom - to.top);
@@ -232,6 +330,14 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         app.world.buttonUp(p.x, p.y);
         return 0;
     }
+    case WM_SYSCOMMAND:
+        if ((wp & 0xFFF0) == kSysRunAtStartup) {
+            setRunAtStartup(!runsAtStartup());
+            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysRunAtStartup,
+                          MF_BYCOMMAND | (runsAtStartup() ? MF_CHECKED : MF_UNCHECKED));
+            return 0;
+        }
+        break;
     case WM_CHAR:
         app.world.inputChar(wchar_t(wp));
         return 0;
@@ -279,6 +385,10 @@ int runWindow(HINSTANCE instance, int show) {
     AdjustWindowRectExForDpi(&rc, style, FALSE, 0, dpi);
     HWND hwnd = app.hwnd = CreateWindowW(L"CyberPest", L"CyberPest", style, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left,
                               rc.bottom - rc.top, nullptr, nullptr, instance, nullptr);
+    HMENU system = GetSystemMenu(hwnd, FALSE);
+    AppendMenuW(system, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(system, MF_STRING | (runsAtStartup() ? MF_CHECKED : MF_UNCHECKED), kSysRunAtStartup,
+                L"Run CyberPest when Windows starts");
     ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
 
@@ -359,10 +469,9 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     // Real pixels on scaled displays (otherwise Windows blurs the whole window).
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    SetProcessDPIAware();
     int argc = 0;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    std::wstring admPath, snapshot;
+    std::wstring admPath, snapshot, importSource, importTarget;
     DWORD duration = 0;
     std::vector<Click> clicks;
     std::vector<Drag> drags;
@@ -381,6 +490,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         else if (key == L"--snapshot") snapshot = value;
         else if (key == L"--time") duration = DWORD(_wtoi(value.c_str()));
         else if (key == L"--popup") popupReason = _wtoi(value.c_str());
+        else if (key == L"--startup") return setRunAtStartup(value == L"on") ? 0 : 1;
+        else if (key == L"--import") importSource = value;
+        else if (key == L"--out") importTarget = value;
         else if (key == L"--click") {
             Click c{};
             if (swscanf(value.c_str(), L"%d,%d,%lu", &c.x, &c.y, &c.at) == 3) clicks.push_back(c);
@@ -397,10 +509,23 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         }
     }
     LocalFree(argv);
+    if (!importSource.empty()) {
+        std::wstring error;
+        if (importTarget.empty()) importTarget = dataDirectory() + L"\\PEST.ADM";
+        if (importGameData(importSource, importTarget, &error)) return 0;
+        std::fwprintf(stderr, L"%ls\n", error.c_str());
+        return 1;
+    }
+    // Game data: --adm, [Files] ADB, next to the exe, imported copy, current folder; else ask.
     if (admPath.empty()) admPath = iniAdbPath();
+    for (const std::wstring& candidate : {exeDirectory() + L"PEST.ADM", dataDirectory() + L"\\PEST.ADM",
+                                          std::wstring(L"PEST.ADM")}) {
+        if (admPath.empty() && fileExists(candidate)) admPath = candidate;
+    }
+    if (admPath.empty() && snapshot.empty()) admPath = askForGameData();
     if (admPath.empty()) {
-        admPath = exeDirectory() + L"PEST.ADM";
-        if (GetFileAttributesW(admPath.c_str()) == INVALID_FILE_ATTRIBUTES) admPath = L"PEST.ADM";
+        if (snapshot.empty()) return 0;  // the player cancelled
+        admPath = L"PEST.ADM";
     }
     if (!loadGame(admPath)) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);

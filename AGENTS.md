@@ -53,6 +53,6 @@ Ghidra selector = 0x1000 + 8*(segment-1); `sub_<seg>_<off>` labels come from `to
 
 - `tools/` — RE and extraction tools (stdlib Python)
 - `docs/` — plan, checkpoints, format and code notes
-- `src/` — the remake (C++17, Win32, CMake) — created at milestone M3
+- `src/` — the remake (C++20, Win32, CMake); `README.md` is the player-facing guide
 - `original/` — gitignored: `installer/` (zip contents) and `extracted/` (installed files)
 - `work/` — gitignored: generated disassembly, dumped assets, scratch output
