@@ -24,8 +24,8 @@
 namespace {
 
 constexpr int kWidth = 640, kHeight = 480;
-constexpr int32_t kCertificate = -106, kNameAccepted = -203;
-constexpr int32_t kCursorTable = -58, kDefaultCursor = -59, kFrameScaleConfig = -49, kConfig = -42;
+constexpr int32_t kCertificate = -106, kNameAccepted = -203, kAppClose = -156, kAppMinimize = -118;
+constexpr int32_t kCursorTable = -58, kDefaultCursor = -59;
 
 struct Cursor {
     const Flc* flc = nullptr;
@@ -40,8 +40,8 @@ struct App {
     Mixer mixer;
     std::unordered_map<int32_t, Cursor> cursors;
     std::vector<std::unique_ptr<Flc>> cursorImages;
-    POINT mouse = {-1, -1};  // in 640x480 space; -1 = outside the window
     std::wstring error;
+    HWND hwnd = nullptr;
 } app;
 
 std::wstring widen(const std::string& s) { return std::wstring(s.begin(), s.end()); }
@@ -51,18 +51,6 @@ std::wstring exeDirectory() {
     const DWORD n = GetModuleFileNameW(nullptr, path, MAX_PATH);
     std::wstring dir(path, n);
     return dir.substr(0, dir.find_last_of(L"\\/") + 1);
-}
-
-int configInt(int32_t listId, int fallback) {
-    const adm::Node* config = app.db.findModule(kConfig);
-    if (!config) return fallback;
-    for (const adm::Node& c : config->children) {
-        if (c.tag == adm::Tag::List && c.id == listId) {
-            const std::vector<int32_t> v = adm::intValues(c);
-            return v.empty() ? fallback : v[0];
-        }
-    }
-    return fallback;
 }
 
 void loadCursors() {
@@ -93,7 +81,12 @@ bool loadGame(const std::wstring& admPath) {
     }
     loadCursors();
     app.world.setSoundPlayer([](const Sound* s) { app.mixer.play(0, s); });
-    if (!app.world.load(app.db, sym::RoomScreen, configInt(kFrameScaleConfig, 1), &err)) {
+    app.world.setAppMessageHandler([](int32_t message) {  // 1000:4768
+        if (!app.hwnd) return;
+        if (message == kAppClose) PostMessageW(app.hwnd, WM_CLOSE, 0, 0);
+        else if (message == kAppMinimize) ShowWindow(app.hwnd, SW_MINIMIZE);
+    });
+    if (!app.world.load(app.db, sym::RoomScreen, &err)) {
         app.error = L"Can't build the room: " + widen(err);
         return false;
     }
@@ -103,15 +96,15 @@ bool loadGame(const std::wstring& admPath) {
 void compose(DWORD now) {
     app.screen.fill(0);
     app.world.draw(app.screen);
-    if (app.mouse.x < 0) return;
-    const int32_t id = app.world.hover(app.mouse.x, app.mouse.y);
-    auto it = app.cursors.find(id ? id : kDefaultCursor);
+    const Point2 mouse = app.world.mouse();
+    if (mouse.x < 0) return;
+    auto it = app.cursors.find(app.world.cursor());
     if (it == app.cursors.end()) it = app.cursors.find(kDefaultCursor);
     if (it == app.cursors.end()) return;
     const Cursor& c = it->second;
     const int frame = int(now / DWORD(std::max(c.flc->frameDelayMs(), 20)) % DWORD(c.flc->frameCount()));
-    app.screen.blit(c.flc->frames()[frame].data(), c.flc->width(), c.flc->height(), app.mouse.x - c.hotX,
-                    app.mouse.y - c.hotY);
+    app.screen.blit(c.flc->frames()[frame].data(), c.flc->width(), c.flc->height(), mouse.x - c.hotX,
+                    mouse.y - c.hotY);
 }
 
 void present(HWND hwnd, HDC dc) {
@@ -158,22 +151,30 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
         break;
     case WM_MOUSEMOVE: {
-        app.mouse = toGame(hwnd, lp);
+        const POINT p = toGame(hwnd, lp);
+        app.world.mouseMove(p.x, p.y);
         TRACKMOUSEEVENT tme = {sizeof tme, TME_LEAVE, hwnd, 0};
         TrackMouseEvent(&tme);
         return 0;
     }
     case WM_MOUSELEAVE:
-        app.mouse = {-1, -1};
+        if (GetCapture() != hwnd) app.world.mouseLeave();
         return 0;
     case WM_LBUTTONDOWN: {
         const POINT p = toGame(hwnd, lp);
-        app.world.click(p.x, p.y, GetTickCount());
+        SetCapture(hwnd);
+        app.world.buttonDown(p.x, p.y);
+        return 0;
+    }
+    case WM_LBUTTONUP: {
+        const POINT p = toGame(hwnd, lp);
+        ReleaseCapture();
+        app.world.buttonUp(p.x, p.y);
         return 0;
     }
     case WM_CHAR:
         // Stand-in until the certificate class (-593) is ported: Enter accepts the (unnamed) pest.
-        if (wp == VK_RETURN) app.world.send(kCertificate, kNameAccepted, GetTickCount());
+        if (wp == VK_RETURN) app.world.send(kCertificate, kNameAccepted);
         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -198,7 +199,7 @@ int runWindow(HINSTANCE instance) {
     const DWORD style = WS_OVERLAPPEDWINDOW;
     RECT rc = {0, 0, kWidth * scale, kHeight * scale};
     AdjustWindowRect(&rc, style, FALSE);
-    HWND hwnd = CreateWindowW(L"CyberPest", L"CyberPest", style, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left,
+    HWND hwnd = app.hwnd = CreateWindowW(L"CyberPest", L"CyberPest", style, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left,
                               rc.bottom - rc.top, nullptr, nullptr, instance, nullptr);
     ShowWindow(hwnd, SW_SHOWNORMAL);
     app.mixer.start();
@@ -232,8 +233,12 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
     std::sort(clicks.begin(), clicks.end(), [](const Click& a, const Click& b) { return a.at < b.at; });
     size_t next = 0;
     for (DWORD t = 0; t <= duration; t += 10) {
-        for (; next < clicks.size() && clicks[next].at <= t; ++next) app.world.click(clicks[next].x, clicks[next].y, t);
         app.world.tick(t);
+        for (; next < clicks.size() && clicks[next].at <= t; ++next) {
+            app.world.mouseMove(clicks[next].x, clicks[next].y);
+            app.world.buttonDown(clicks[next].x, clicks[next].y);
+            app.world.buttonUp(clicks[next].x, clicks[next].y);
+        }
     }
     compose(duration);
     if (dump) std::fputs(app.world.describe().c_str(), stdout);

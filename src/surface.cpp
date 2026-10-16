@@ -6,9 +6,20 @@
 
 void Surface::fill(uint8_t index) { std::fill(pixels_.begin(), pixels_.end(), index); }
 
-void Surface::blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent) {
+void Surface::blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent, bool mirror) {
     const int x0 = std::max(0, x), y0 = std::max(0, y);
     const int x1 = std::min(width_, x + srcWidth), y1 = std::min(height_, y + srcHeight);
+    if (mirror) {
+        for (int dy = y0; dy < y1; ++dy) {
+            const uint8_t* row = src + size_t(dy - y) * srcWidth;
+            uint8_t* d = &pixels_[size_t(dy) * width_ + x0];
+            for (int dx = x0; dx < x1; ++dx, ++d) {
+                const uint8_t c = row[srcWidth - 1 - (dx - x)];
+                if (c != transparent) *d = c;
+            }
+        }
+        return;
+    }
     for (int dy = y0; dy < y1; ++dy) {
         const uint8_t* s = src + size_t(dy - y) * srcWidth + (x0 - x);
         uint8_t* d = &pixels_[size_t(dy) * width_ + x0];

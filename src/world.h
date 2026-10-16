@@ -1,6 +1,5 @@
-// The room's live objects: each runs a data-defined state machine (docs/re/state-commands.md).
-// Mirrors the original's object (1000:5604 factory), runner (vtable 1038:3832) and sprite
-// (vtable 1038:5054) classes, without the 16-bit plumbing.
+// The room ("screen" in the original, segment 1): owns the objects, dispatches input to them
+// in depth order with focus/cursor handling, and provides shared services (assets, config).
 #pragma once
 
 #include <cstdint>
@@ -12,110 +11,79 @@
 
 #include "adm.h"
 #include "flc.h"
+#include "object.h"
 #include "surface.h"
+#include "vec.h"
 #include "wav.h"
 
-class World;
-struct Object;
-
-// One command list from a state module, kept for later execution as a cue.
-struct Command {
-    int32_t symbol = 0;
-    std::vector<int32_t> ints;
-    const adm::FileRef* file = nullptr;
-};
-
-struct Sprite {
-    const Flc* flc = nullptr;
-    std::string name;
-    const Sound* sound = nullptr;
-    int frame = -1;          // -1 = not started
-    bool loop = false;       // -183
-    int loopCount = 0;       // -183 argument; 0 = forever
-    int loopsDone = 0;
-    bool holdLastFrame = false;  // -112 1
-    bool finished = false;
-    std::vector<std::pair<int, Command>> cues;  // (frame, command); frame -1 = at end
-};
-
-struct Event {
-    int type = 0;   // 0 message, 1 click, 2/3 other mouse actions
-    int32_t value = 0;
-    int32_t state = 0;
-    bool immediate = false;  // c
-    bool anyFocus = true;    // d
-};
-
-struct HitArea {
-    int32_t id = 0;
-    int x1 = 0, y1 = 0, x2 = 0, y2 = 0;  // relative to the sprite's top-left
-    int32_t cursor = 0, pressedCursor = 0;
-};
-
-struct Runner {
-    int32_t state = 0;
-    Sprite sprites[3];      // intro (-306), main (-111), outro (-431)
-    int current = -1;       // index into sprites of the playing sprite
-    int32_t nextState = 0;  // -132 / -151
-    bool pending = false;   // an event is waiting for the animation to end
-    bool done = false;
-    std::vector<Event> events;
-    std::vector<HitArea> hitAreas;
-};
-
-struct Object {
-    int32_t id = 0;
-    const adm::Node* module = nullptr;
-    int x = 0, y = 0, z = 0;
-    bool paused = false;
-    std::unordered_map<int32_t, int32_t> properties;
-    std::unique_ptr<Runner> runner;
-    std::vector<std::unique_ptr<Runner>> retired;  // replaced runners, freed after the tick
-    const Flc* shown = nullptr;  // image drawn (persists after the runner ends)
-    std::string shownName;
-    int shownFrame = 0;
-    uint32_t lastStep = 0;
+struct GameConfig {  // config module -42 (App_LoadConfig 1000:3584)
+    int floorMaxY = 359;  // -44 (theApp+0x6ce)
+    int floorMinY = 224;  // -45 (theApp+0x6d0)
+    int config46 = 50;    // -46 (theApp+0x6d2) [meaning ?]
+    int gravity = 40;     // -47 (theApp+0x6d4), multiplied by frameScale [inf]
+    int frameScale = 1;   // -49 (theApp+0x6d6): 1 high spec, 2 low spec
 };
 
 class World {
 public:
     using SoundPlayer = std::function<void(const Sound*)>;
+    using AppMessage = std::function<void(int32_t)>;  // messages sent to target -117
 
-    bool load(const adm::Database& db, int32_t roomId, int frameScale, std::string* error);
+    bool load(const adm::Database& db, int32_t roomId, std::string* error);
     void setSoundPlayer(SoundPlayer play) { playSound_ = std::move(play); }
+    void setAppMessageHandler(AppMessage handler) { appMessage_ = std::move(handler); }
 
-    // Advances every object's animation to time `nowMs`.
+    // Per tick: advance animations, run per-frame hooks, deliver the hover event (1000:07c6).
     void tick(uint32_t nowMs);
     void draw(Surface& target) const;
 
-    // Mouse: returns the cursor id to show at (x, y) (0 = default).
-    int32_t hover(int x, int y) const;
-    void click(int x, int y, uint32_t nowMs);
-    // Delivers a message (type-0 event) to an object, as the -119 command does.
-    void send(int32_t target, int32_t message, uint32_t nowMs);
+    // Input in 640x480 coordinates (1000:103c / 1000:1206 / 1000:135c).
+    void mouseMove(int x, int y);
+    void buttonDown(int x, int y);
+    void buttonUp(int x, int y);
+    void mouseLeave();
+    int32_t cursor() const { return cursor_; }
+    bool buttonIsDown() const { return buttonDown_; }
+    Point2 mouse() const { return mouse_; }
 
-    Object* find(int32_t id);
-    // Debug listing: one line per object (id, state, position, depth, image, frame).
+    // Services for objects.
+    GameObject* find(int32_t id) const;
+    GameObject* spawn(int32_t moduleId, const Vec3& pos, bool facing);
+    void remove(GameObject* obj);
+    void sendToApp(int32_t message) {
+        if (appMessage_) appMessage_(message);
+    }
+    void send(int32_t target, int32_t message);  // deliver a message (type-0 event)
+    const adm::Database& db() const { return *db_; }
+    const GameConfig& config() const { return config_; }
+    uint32_t now() const { return now_; }
+    GameObject* focus() const { return focus_; }
+    void takeFocus(GameObject* obj) { focus_ = obj; }
+    void setCursor(int32_t id) { cursor_ = id; }
+    const Flc* image(const adm::FileRef& file);
+    const Sound* sound(const adm::FileRef& file);
+    void playSound(const Sound* s) {
+        if (playSound_ && s) playSound_(s);
+    }
     std::string describe() const;
 
 private:
-    Object* spawn(int32_t moduleId, int x, int y, int z, uint32_t nowMs);
-    void remove(int32_t id);
-    void enterState(Object& obj, int32_t state, uint32_t nowMs, int depth = 0);
-    void runCommand(Object& obj, Runner& r, const Command& c, uint32_t nowMs);
-    void step(Object& obj, uint32_t nowMs);
-    void startSprite(Object& obj, Runner& r, int index);
-    void runnerFinished(Object& obj, uint32_t nowMs);
-    void sendEvent(Object& obj, int type, int32_t value, uint32_t nowMs);
-    const Flc* image(const adm::FileRef& file);
-    const Sound* sound(const adm::FileRef& file);
-    bool hitTest(const Object& obj, int x, int y, const HitArea** area) const;
+    std::unique_ptr<GameObject> makeObject(int32_t moduleId, const adm::Node* module);  // 1000:5604
+    void sortByDepth();
+    template <typename F>
+    void broadcast(F&& f);
 
     const adm::Database* db_ = nullptr;
-    int frameScale_ = 1;
-    std::vector<std::unique_ptr<Object>> objects_;
-    std::vector<int32_t> removed_;
+    GameConfig config_;
+    std::vector<std::unique_ptr<GameObject>> objects_;  // front (highest z) first
+    std::vector<std::unique_ptr<GameObject>> removed_;
     std::unordered_map<uint32_t, std::unique_ptr<Flc>> images_;
     std::unordered_map<uint32_t, std::unique_ptr<Sound>> sounds_;
     SoundPlayer playSound_;
+    AppMessage appMessage_;
+    GameObject* focus_ = nullptr;
+    int32_t cursor_ = 0;
+    Point2 mouse_{-1, -1};
+    bool buttonDown_ = false;
+    uint32_t now_ = 0;
 };

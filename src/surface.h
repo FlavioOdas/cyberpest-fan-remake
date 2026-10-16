@@ -19,7 +19,8 @@ public:
     void fill(uint8_t index);
     // Copies an indexed image at (x, y), clipped. Pixels equal to `transparent` are skipped
     // (the game's transparency key is palette index 0, pure green); pass -1 to copy all.
-    void blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent = 0);
+    // `mirror` flips the image horizontally (objects facing the other way).
+    void blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent = 0, bool mirror = false);
 
 private:
     int width_, height_;
