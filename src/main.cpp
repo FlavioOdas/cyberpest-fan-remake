@@ -7,6 +7,7 @@
 //   --drag <x1,y1,x2,y2,ms>  with --snapshot: hold and move over 400 ms; repeatable
 //   --type <text,ms>   with --snapshot: type into the active text field; repeatable
 //   --dump              with --snapshot: print every object's state to stdout
+//   --popup <reason>    with --snapshot: draw the attention pop-up (e.g. -601) instead (24-bit BMP)
 #include <windows.h>
 #include <shellapi.h>
 
@@ -17,6 +18,7 @@
 #include <vector>
 
 #include "adm.h"
+#include "attention.h"
 #include "audio.h"
 #include "flc.h"
 #include "surface.h"
@@ -117,6 +119,7 @@ bool loadGame(const std::wstring& admPath) {
     app.world.setSoundPlayer([](const Sound* s) { app.mixer.play(0, s); });
     app.world.setAudioHandler([](bool on) { app.mixer.setMuted(!on); });  // audio button -94
     readIniSettings();
+    app.world.setAttentionHandler([](int32_t reason) { attention::request(app.hwnd, app.db, reason); });
     app.world.setAppMessageHandler([](int32_t message) {  // 1000:4768
         if (!app.hwnd) return;
         if (message == kAppClose) PostMessageW(app.hwnd, WM_CLOSE, 0, 0);
@@ -323,6 +326,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     std::vector<Drag> drags;
     std::vector<TypedText> typed;
     bool dump = false;
+    int popupReason = 0;
     for (int i = 1; i < argc; ++i) {
         const std::wstring key = argv[i];
         if (key == L"--dump") {
@@ -334,6 +338,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (key == L"--adm") admPath = value;
         else if (key == L"--snapshot") snapshot = value;
         else if (key == L"--time") duration = DWORD(_wtoi(value.c_str()));
+        else if (key == L"--popup") popupReason = _wtoi(value.c_str());
         else if (key == L"--click") {
             Click c{};
             if (swscanf(value.c_str(), L"%d,%d,%lu", &c.x, &c.y, &c.at) == 3) clicks.push_back(c);
@@ -359,6 +364,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);
         return 1;
     }
+    if (!snapshot.empty() && popupReason)
+        return attention::snapshot(app.db, popupReason, snapshot.c_str()) ? 0 : 1;
     if (!snapshot.empty())
         return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump);
     return runWindow(instance);

@@ -94,3 +94,38 @@ messages into its -218 rectangle. A first-call Pesterminator greeting, repeat
 tip, and Pestrologer birth-hour greeting were verified in headless snapshots.
 Original Win16 edit-control line wrapping and scrolling are not yet matched.
 [obs: original rectangle/font/color lists; inf: overlay rendering]
+
+## Attention pop-up (2026-10-17, Claude)
+
+`1000:47f6(theApp, reason)` runs when the pest needs the player. If no pop-up exists
+(theApp+0x1de) and the game's main window is not the active window, it saves
+GetActiveWindow in +0x1e2, creates class `1010:343c` (vtable 1038:6d20), activates it,
+SetWindowPos(SWP_NOSIZE|NOMOVE|SHOWWINDOW), shows it, MessageBeep(0) and
+FlashWindow(main, TRUE). [obs: decompile + asm; the reason is the pushed second argument]
+
+Create (`1010:357c`, vtable +0xa0) uses module -596: frame bitmap -57 `WINDOW.BMP`
+(332×340, BI_RLE8) sets the WS_POPUP window size, centred on the screen (`1010:2e6e`);
+the reason picture is the module's list named by the reason id; rect -599 (52,109)-
+(284,282) is the picture area, -598 (36,288)-(125,330) the ATTEND button and -597
+(209,288)-(299,330) the IGNORE button (labels drawn in WINDOW.BMP). Paint draws both
+DIBs with StretchDIBits (`1010:318e/3a78`). Left-button up (`1010:3b10`): IGNORE →
+`1000:49ec` (destroy, push the main window back with SWP_NOACTIVATE, SetActiveWindow
+(previous), FlashWindow off); ATTEND → `1000:4938` (destroy, ShowWindow(main,
+SW_RESTORE), FlashWindow off). Close (`1010:3ba0`) = IGNORE.
+
+| Reason | Picture | Raised by |
+|---|---|---|
+| -600 | BORED.BMP | ignored too long `1008:e27f` |
+| -601 | HUNGRY.BMP | good stomach reaches the warning level `1008:c551` |
+| -603 | CONSTIP.BMP | bowels reach 100 `1008:c52d/c59c` |
+| -223 | ILL.BMP | junk-sick after eating `1008:c3ff` |
+| -222 | RABIES.BMP | rabies message `1008:60d8` |
+| -221 | FLEAS.BMP | catches fleas `1008:e0ec` |
+| -602 | TOOLATE.BMP | overfull, about to burst `1008:0e8b` |
+
+Remake (`src/attention.cpp`): same logic with GetForegroundWindow for "active", a
+topmost unowned popup (so it still shows when the game is minimised; SetForegroundWindow
+may be refused by Windows, the beep and flash still happen), IGNORE sends the game window
+to HWND_BOTTOM [inf: the original's insert-after argument was not decoded]. The files
+leave `biSizeImage` 0, which Win32 GDI rejects for RLE8, so it is filled in from the file
+size. `--snapshot x.bmp --popup <reason>` renders the pop-up headlessly.

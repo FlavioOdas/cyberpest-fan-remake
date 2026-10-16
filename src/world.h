@@ -61,10 +61,10 @@ public:
     std::vector<GameObject*> objectSnapshot() const;
     int count(int32_t id) const;                       // 1000:0cdc
     bool anyOtherWithProperty(const GameObject* object, int32_t property) const;
-    void requestAttention() {                          // 1000:47f6: pop up over other apps
-        if (attention_) attention_();
+    void requestAttention(int32_t reason) {            // 1000:47f6: pop up over other apps
+        if (attention_) attention_(reason);
     }
-    void setAttentionHandler(std::function<void()> h) { attention_ = std::move(h); }
+    void setAttentionHandler(std::function<void(int32_t)> h) { attention_ = std::move(h); }
     // Sound on/off (theApp+0xcc, INI [Options] Audio; 1038:67a6/6788/1d48).
     bool audioEnabled() const { return audio_; }
     void setAudioEnabled(bool on) {
@@ -110,7 +110,7 @@ private:
     std::unordered_map<uint32_t, std::unique_ptr<Sound>> sounds_;
     SoundPlayer playSound_;
     AppMessage appMessage_;
-    std::function<void()> attention_;
+    std::function<void(int32_t)> attention_;
     std::function<void(bool)> audioHandler_;
     bool audio_ = true;
     GameObject* focus_ = nullptr;

@@ -402,7 +402,7 @@ void Pest::decide() {  // 0962
             }
             if (good_ + junk_ > 99 && position().x > screenLeftX_ && position().x < screenRightX_ &&
                 position().y < world_.config().floorMaxY) {  // too full: wants attention
-                world_.requestAttention();
+                world_.requestAttention(-602);  // too late (1008:0e8b)
                 enterState(-446);
                 break;
             }
@@ -1606,7 +1606,7 @@ void Pest::eat(int amount, bool junk) {  // c3b6
     if (!junk) good_ += amount;
     else {
         junk_ += amount;
-        if (junkSick()) world_.requestAttention();
+        if (junkSick()) world_.requestAttention(-223);  // ill
     }
 }
 
@@ -1623,12 +1623,12 @@ void Pest::burnFood(int amount) {  // c472
 void Pest::digest() {  // c4e4
     if (good_) {
         --good_;
-        if (bowels_ < 100 && ++bowels_ == 100) world_.requestAttention();
-        if (good_ == hungryWarning_) world_.requestAttention();
+        if (bowels_ < 100 && ++bowels_ == 100) world_.requestAttention(-603);  // constipated
+        if (good_ == hungryWarning_) world_.requestAttention(-601);            // hungry
     }
     if (junk_) {
         --junk_;
-        if (bowels_ < 100 && ++bowels_ == 100) world_.requestAttention();
+        if (bowels_ < 100 && ++bowels_ == 100) world_.requestAttention(-603);
     }
 }
 
@@ -1676,7 +1676,7 @@ void Pest::spawnFlea() {  // deb0: a flea jumps off the pest
 void Pest::maybeCatchFleas() {  // e0c0
     if (rnd(1, 240) == 1) {
         fleas_ = 1;
-        world_.requestAttention();
+        world_.requestAttention(-221);  // fleas
     }
 }
 
@@ -1690,7 +1690,7 @@ void Pest::checkAttention(long now) {  // e17e: bored of being ignored
     const long idleMinutes = (now - lastInteraction_) / 60;
     const int extroversion = std::min(moodPersonality().y / 100, 100);
     if (idleMinutes > 120 - extroversion) {
-        world_.requestAttention();
+        world_.requestAttention(-600);  // bored
         lastInteraction_ = now;
     }
 }
@@ -1784,7 +1784,7 @@ void Pest::onEvent(GameObject* from, int32_t value, int type) {
             if (bowels_ > 99) bowels_ = world_.cheats().bowels;
             break;
         case -222:
-            world_.requestAttention();
+            world_.requestAttention(-222);  // rabies
             rabies_ = 1;
             break;
         case -202: hearWords(true, from); break;
