@@ -68,10 +68,11 @@ Object* World::spawn(int32_t moduleId, int x, int y, int z, uint32_t nowMs) {
     obj->y = y;
     obj->z = z;
     obj->lastStep = nowMs;
-    // Object_Activate (1000:5f02): top-level property lists, then the first state.
+    // Object_Activate (1000:5f02): top-level property lists, then the first child whose ref is
+    // the state class (-109); other sub-modules are class data (e.g. shelf rectangles -275).
     int32_t firstState = 0;
     for (const adm::Node& c : module->children) {
-        if (c.tag == adm::Tag::Map) {
+        if (c.tag == adm::Tag::Map && c.ref == sym::ClassState) {
             firstState = c.id;
             break;
         }
