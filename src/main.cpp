@@ -12,6 +12,7 @@
 #include <shellapi.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <unordered_map>
@@ -146,6 +147,18 @@ void compose(DWORD now) {
                     mouse.y - c.hotY);
 }
 
+// Where the 640x480 picture goes in the client area: 4:3, centred, letterboxed with black
+// bars; a whole-number scale (evenly sized pixels) when that still nearly fills the window.
+RECT gameRect(HWND hwnd) {
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+    double scale = std::min(double(rc.right) / kWidth, double(rc.bottom) / kHeight);
+    if (scale >= 1 && std::floor(scale) / scale >= 0.85) scale = std::floor(scale);
+    const int w = int(kWidth * scale), h = int(kHeight * scale);
+    const int left = (rc.right - w) / 2, top = (rc.bottom - h) / 2;
+    return {left, top, left + w, top + h};
+}
+
 void present(HWND hwnd, HDC dc) {
     struct {
         BITMAPINFOHEADER header;
@@ -158,18 +171,26 @@ void present(HWND hwnd, HDC dc) {
     bmi.header.biBitCount = 8;
     bmi.header.biClrUsed = 256;
     for (int i = 0; i < 256; ++i) bmi.colors[i] = {app.palette[i].b, app.palette[i].g, app.palette[i].r, 0};
+    const RECT to = gameRect(hwnd);
     RECT rc;
     GetClientRect(hwnd, &rc);
+    HBRUSH black = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));  // letterbox bars
+    const RECT bars[] = {{0, 0, rc.right, to.top}, {0, to.bottom, rc.right, rc.bottom},
+                         {0, to.top, to.left, to.bottom}, {to.right, to.top, rc.right, to.bottom}};
+    for (const RECT& bar : bars) {
+        if (bar.right > bar.left && bar.bottom > bar.top) FillRect(dc, &bar, black);
+    }
     SetStretchBltMode(dc, COLORONCOLOR);
-    StretchDIBits(dc, 0, 0, rc.right, rc.bottom, 0, 0, kWidth, kHeight, app.screen.pixels(),
-                  reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS, SRCCOPY);
+    StretchDIBits(dc, to.left, to.top, to.right - to.left, to.bottom - to.top, 0, 0, kWidth, kHeight,
+                  app.screen.pixels(), reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS, SRCCOPY);
 }
 
 POINT toGame(HWND hwnd, LPARAM lp) {
-    RECT rc;
-    GetClientRect(hwnd, &rc);
-    const int x = short(LOWORD(lp)), y = short(HIWORD(lp));
-    return {rc.right ? x * kWidth / rc.right : 0, rc.bottom ? y * kHeight / rc.bottom : 0};
+    const RECT to = gameRect(hwnd);
+    const int w = std::max<int>(1, to.right - to.left), h = std::max<int>(1, to.bottom - to.top);
+    const int x = short(LOWORD(lp)) - to.left, y = short(HIWORD(lp)) - to.top;
+    // The bars count as the nearest edge of the picture.
+    return {std::clamp(x * kWidth / w, 0, kWidth - 1), std::clamp(y * kHeight / h, 0, kHeight - 1)};
 }
 
 LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
@@ -214,6 +235,22 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_CHAR:
         app.world.inputChar(wchar_t(wp));
         return 0;
+    case WM_SIZE:
+        InvalidateRect(hwnd, nullptr, FALSE);
+        return 0;
+    case WM_DPICHANGED: {  // moved to a monitor with another scale: take the suggested size
+        const RECT* r = reinterpret_cast<const RECT*>(lp);
+        SetWindowPos(hwnd, nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+        return 0;
+    }
+    case WM_GETMINMAXINFO: {
+        RECT min = {0, 0, kWidth / 2, kHeight / 2};
+        AdjustWindowRectExForDpi(&min, WS_OVERLAPPEDWINDOW, FALSE, 0, GetDpiForWindow(hwnd) ? GetDpiForWindow(hwnd) : 96);
+        auto* info = reinterpret_cast<MINMAXINFO*>(lp);
+        info->ptMinTrackSize = {min.right - min.left, min.bottom - min.top};
+        return 0;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -221,7 +258,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-int runWindow(HINSTANCE instance) {
+int runWindow(HINSTANCE instance, int show) {
     WNDCLASSW wc = {};
     wc.lpfnWndProc = windowProc;
     wc.hInstance = instance;
@@ -229,17 +266,20 @@ int runWindow(HINSTANCE instance) {
     wc.lpszClassName = L"CyberPest";
     RegisterClassW(&wc);
 
-    // Largest integer scale of 640x480 that fits the work area.
+    // Largest whole-number scale of 640x480 that fits 90% of the work area, or the display's
+    // own scale (e.g. 150%) when that is larger and fits.
     RECT work;
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
-    const int scale = std::max<int>(1, std::min<int>((work.right - work.left) * 9 / 10 / kWidth,
-                                                     (work.bottom - work.top) * 9 / 10 / kHeight));
+    const double room = std::min((work.right - work.left) * 0.9 / kWidth, (work.bottom - work.top) * 0.9 / kHeight);
+    const UINT dpi = GetDpiForSystem();
+    double scale = std::max(1.0, std::floor(room));
+    if (dpi / 96.0 > scale && dpi / 96.0 <= room) scale = dpi / 96.0;
     const DWORD style = WS_OVERLAPPEDWINDOW;
-    RECT rc = {0, 0, kWidth * scale, kHeight * scale};
-    AdjustWindowRect(&rc, style, FALSE);
+    RECT rc = {0, 0, LONG(kWidth * scale), LONG(kHeight * scale)};
+    AdjustWindowRectExForDpi(&rc, style, FALSE, 0, dpi);
     HWND hwnd = app.hwnd = CreateWindowW(L"CyberPest", L"CyberPest", style, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left,
                               rc.bottom - rc.top, nullptr, nullptr, instance, nullptr);
-    ShowWindow(hwnd, SW_SHOWNORMAL);
+    ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
 
     MSG msg;
@@ -316,7 +356,9 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
 
 }  // namespace
 
-int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+    // Real pixels on scaled displays (otherwise Windows blurs the whole window).
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     SetProcessDPIAware();
     int argc = 0;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -368,5 +410,5 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         return attention::snapshot(app.db, popupReason, snapshot.c_str()) ? 0 : 1;
     if (!snapshot.empty())
         return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump);
-    return runWindow(instance);
+    return runWindow(instance, show);
 }

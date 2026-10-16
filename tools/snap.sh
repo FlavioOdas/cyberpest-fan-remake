@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 if [ "${1:-}" = "--fresh" ]; then
   shift
-  (cd /mnt/c && cmd.exe /c 'del "%APPDATA%\CyberPest\PEST.CFG"' > /dev/null 2>&1) || true
+  (cd /mnt/c && cmd.exe /c 'if exist %APPDATA%\CyberPest\PEST.CFG del %APPDATA%\CyberPest\PEST.CFG' > /dev/null 2>&1) || true
 fi
 source ~/tools/env.sh
 mkdir -p work/test

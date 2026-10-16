@@ -26,7 +26,8 @@ add_executable(cyberpest WIN32
     src/audio.cpp
     src/wav.cpp
 )
-target_compile_definitions(cyberpest PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_definitions(cyberpest PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX
+    _WIN32_WINNT=0x0A00 WINVER=0x0A00)  # Windows 10+ (per-monitor DPI APIs)
 target_link_libraries(cyberpest PRIVATE winmm gdi32 user32 shell32)
 
 if(MINGW)
