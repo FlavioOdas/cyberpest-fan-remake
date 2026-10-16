@@ -25,7 +25,20 @@ user's original data file (`PEST.ADM`) at runtime.
 - **Checkpoint discipline:** after each meaningful step, append a dated entry to
   `docs/CHECKPOINTS.md` and update its "Current state" section, then commit locally.
   Do not push unless the user asks.
-- REA/Hopper cannot open 16-bit NE executables; use `tools/` (objdump `-m i8086`) instead.
+- REA/Hopper cannot open 16-bit NE executables. Use `tools/ne_disasm.py` (objdump `-m i8086`,
+  relocations resolved to API names) and Ghidra headless (`tools/ghidra/`, output in `work/ghidra/`).
+
+## Toolchain (dev only, no sudo)
+
+`tools/setup_toolchain.sh` installs JDK 21, Ghidra 12.1.4, llvm-mingw (Windows cross-compiler)
+and CMake into `~/tools`. Then `source ~/tools/env.sh`. Regenerate analysis outputs with:
+
+```bash
+python3 tools/adm_dump.py original/extracted/APP/SLOW/PEST.ADM work/adm
+python3 tools/ne_disasm.py original/extracted/APP/PEST.EXE work/disasm
+"$GHIDRA_HOME/support/analyzeHeadless" work/ghidra CyberPest -import original/extracted/APP/PEST.EXE \
+  -overwrite -scriptPath tools/ghidra -postScript DecompileAll.java work/ghidra/pest.c work/ghidra/functions.tsv
+```
 
 ## Layout
 

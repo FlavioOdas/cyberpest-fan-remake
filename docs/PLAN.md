@@ -11,8 +11,7 @@
 - **Sound:** a small software mixer feeding `waveOut` (replaces WAVMIX16's channel model:
   open wave, open channel, play, flush, close).
 - **Data:** read the user's original `PEST.ADM` at runtime; never ship assets.
-- **Build:** CMake; cross-compile from WSL with mingw-w64, also buildable with MSVC.
-  Needs (user runs, sudo): `sudo apt-get install -y mingw-w64 cmake ninja-build`.
+- **Build:** CMake; cross-compile from WSL with llvm-mingw (`~/tools`, see AGENTS.md), also buildable with MSVC.
 
 ## Milestones
 
