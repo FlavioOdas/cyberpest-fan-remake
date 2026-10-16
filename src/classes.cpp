@@ -1,6 +1,7 @@
 #include "classes.h"
 
 #include "certificate.h"
+#include "clock.h"
 #include "items.h"
 #include "panels.h"
 #include "pest.h"
@@ -13,6 +14,8 @@ std::unique_ptr<GameObject> createObjectForClass(int32_t classSymbol, World& wor
         return std::make_unique<Certificate>(world, moduleId, module);
     case -105:
         return std::make_unique<Pest>(world, moduleId, module);
+    case -90:
+        return std::make_unique<Clock>(world, moduleId, module);
     case -274:
     case -558:
         return std::make_unique<ShelfItem>(world, moduleId, module);

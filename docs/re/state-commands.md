@@ -9,6 +9,10 @@ Status markers: **[obs]** observed in code/data, **[inf]** inferred, **[?]** unk
   modules with `ref = -109` are **states**; `-108` is the initial state of every object.
 - A state is a sequence of lists; each list's `ref` is a **command symbol** and its values are
   the arguments. `State_Run(object, stateModule)` executes the lists in order.
+- Most states are selected by a negative symbol id. Clock hand modules -88/-89
+  instead have repeated id=0 state maps after the first -520 map; their original
+  selector adds a numeric offset to the first state's ordinal (`1008:854c/85ea`).
+  The remake's `enterStateAt` preserves these distinct unnamed states. [obs]
 - Object fields used: `+0x2e/+0x32/+0x36` three sprite slots, `+0x3a` current sprite,
   `+0x46` next state, `+0x0a` timer/duration object.
 

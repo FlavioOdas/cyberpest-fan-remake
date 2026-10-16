@@ -62,6 +62,22 @@ and simple Vet symptom choice work, but the original's personality, mood,
 behavior-specific and random branches are not yet ported. [obs: Ghidra code,
 modules -206..-210; inf: partial branch implementations]
 
+## Wall clock (2026-10-16)
+
+Class -90 covers the clock body -90, minute hand -89, hour hand -88, and cuckoo
+-521. The body sends -519 to itself and both hands every animation cycle; its
+event hook `1008:870c` refreshes local wall time (`1008:844c`) and updates only
+when the minute changes. The hour hand chooses one of 25 sprites for a 12-hour
+position rounded to 0, 30 or 60 minutes (`1008:854c`); the minute hand chooses
+one of 24 sprites at 2.5-minute resolution (`1008:85ea`). At minute zero on a
+changed hour, -90 spawns -521 (`1008:84ce`), which loops its cuckoo sprite the
+current 12-hour count (`1008:8682`). [obs: code and ADM modules -88/-89/-90/-521]
+
+The hand sprites are repeated unnamed state maps following -520. The engine's
+new `enterStateAt` selects these by ordinal rather than collapsing every id=0
+to the same first state. A 22:10 local-time snapshot shows H10/M10 and the
+pest walking. [obs: data and headless runtime]
+
 | class | size | ctor | vtable | overridden slots (offset=function) |
 |---|---|---|---|---|
 | -593 | 0x15e | 1038:3308 | 1038:3e9a | +0x04=1038:4890 +0x14=1010:47c6 +0x34=1010:513a +0x44=1010:502a +0x68=1010:50e8 |

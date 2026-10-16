@@ -120,6 +120,7 @@ public:
 
     // ---- engine services used by object classes ----
     void enterState(int32_t state);  // 1000:6100
+    void enterStateAt(int ordinal);
     int32_t state() const { return state_; }
     Runner* runner() const { return runner_.get(); }
     void setProperty(int32_t symbol, int32_t value);  // 1000:63ee
@@ -196,6 +197,7 @@ protected:
     int enterDepth_ = 0;
 
 private:
+    void enterStateModule(const adm::Node& module, int32_t state);
     void runCommands(Runner& r, const adm::Node& state);  // State_Run 1000:8d10
     void runCue(const Cue& c);
     void fireEvent(const Event& e);  // 1000:b44c

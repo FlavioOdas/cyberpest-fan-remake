@@ -10,6 +10,7 @@ add_executable(cyberpest WIN32
     src/object.cpp
     src/classes.cpp
     src/certificate.cpp
+    src/clock.cpp
     src/panels.cpp
     src/items.cpp
     src/text.cpp

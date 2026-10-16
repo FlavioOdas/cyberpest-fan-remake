@@ -66,7 +66,21 @@ bool GameObject::activate() {  // 1000:5f02
 
 void GameObject::enterState(int32_t state) {  // 1000:6100
     const adm::Node* module = adm::childModule(*module_, state);
-    if (!module || enterDepth_ > 16) return;  // states without sprites can chain
+    if (module) enterStateModule(*module, state);
+}
+
+void GameObject::enterStateAt(int ordinal) {
+    for (const adm::Node& module : module_->children) {
+        if (module.tag != adm::Tag::Map || module.ref != sym::ClassState) continue;
+        if (ordinal-- == 0) {
+            enterStateModule(module, module.id);
+            return;
+        }
+    }
+}
+
+void GameObject::enterStateModule(const adm::Node& module, int32_t state) {
+    if (enterDepth_ > 16) return;  // states without sprites can chain
     ++enterDepth_;
     if (runner_) {
         shown_ = nullptr;
@@ -76,7 +90,7 @@ void GameObject::enterState(int32_t state) {  // 1000:6100
     runner_ = std::make_unique<Runner>();
     Runner& r = *runner_;
     r.state = state;
-    runCommands(r, *module);
+    runCommands(r, module);
 
     // End of State_Run (1000:a27c): start the first sprite, or move straight on.
     Sprite* first = r.intro() ? r.intro() : r.main() ? r.main() : r.outro();

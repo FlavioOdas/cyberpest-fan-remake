@@ -517,3 +517,10 @@
 1010:4062	PhoneBubble_Create	load bubble edit control data
 1010:4488	PhoneBubble_OnLastFrame	show phone text
 1010:45f8	PhoneBubble_OnStateStart	request caller text or hide control
+1008:83ca	Clock_Create	initialize hand and time fields
+1008:844c	Clock_RefreshTime	read wall hour and minute
+1008:84ce	Clock_StrikeHour	spawn cuckoo at the top of the hour
+1008:854c	Clock_UpdateHourHand	select half-hour hand sprite
+1008:85ea	Clock_UpdateMinuteHand	select 2.5-minute hand sprite
+1008:8682	Clock_OnLastFrame	set cuckoo strike loop count
+1008:870c	Clock_OnEvent	handle clock update message
