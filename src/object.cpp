@@ -541,7 +541,7 @@ void GameObject::onHover(Point2 p) { runMouse(p, 3); }  // 1000:718c
 void GameObject::onMouseMove(Point2 p) {  // 1000:6f84: drag a held object
     if (held_) {
         const GameConfig& cfg = world_.config();
-        Vec3 np(p.x - grabOffset_.x, p.y - grabOffset_.y, pos_.z);
+        Vec3 np(p.x - grabOffset_.x, p.y - grabOffset_.y, dragOrigin_.z);
         if (!noFloorClamp_) {
             if (np.y > cfg.floorMaxY) {  // dragged below the floor: drop it there
                 np.z = cfg.floorMaxY - cfg.floorMinY + 3000;

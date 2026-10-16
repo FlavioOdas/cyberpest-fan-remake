@@ -51,6 +51,10 @@ object sets the cursor (hit area cursor, or the pressed cursor while the button 
 
 - Depth from floor position: `z = y + 3000 - floorMinY` (`1000:77b6`), floorMinY = config -45 (224),
   floorMaxY = config -44 (359).
+- Held-object mouse movement constructs its candidate position using the saved
+  drag origin's depth (+0x58), not the current position's depth (+0xa8)
+  (`1000:6f84`). The distinction matters when a tray-sized shelf carry item
+  changes to its room-sized state (`1008:819a` resets +0x58 to z=3000). [obs]
 - Sprite motion fields: +0x9c draw offset (cmd -548), +0xa6 displacement spread over the
   animation (cmd -326; per frame the object is moved so the applied total = motion·(f+1)/n),
   +0xb0 displacement applied when the animation ends (cmd -455; x flipped when facing +0xb4),
