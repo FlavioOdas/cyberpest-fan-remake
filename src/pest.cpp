@@ -206,9 +206,12 @@ void Pest::PreferenceList::demote(int32_t symbol) {  // 1010:274c
 // ---------------------------------------------------------------------------------------------
 // Persistence (8f32 / 962c). Same fields as the original PEST.CFG, in a simple text format.
 
-static std::wstring saveDirectory() {
-    const wchar_t* appData = _wgetenv(L"APPDATA");
-    std::wstring dir = appData ? std::wstring(appData) + L"\\CyberPest" : L".";
+std::wstring Pest::saveDirectory() const {
+    std::wstring dir = world_.saveDirectory();
+    if (dir.empty()) {
+        const wchar_t* appData = _wgetenv(L"APPDATA");
+        dir = appData ? std::wstring(appData) + L"\\CyberPest" : L".";
+    }
     _wmkdir(dir.c_str());
     return dir;
 }

@@ -24,6 +24,8 @@ public:
     // Debug/cheat access.
     std::string describeState() const;
     const std::string& name() const { return name_; }
+    std::wstring saveDirectory() const;  // PEST.CFG lives here
+    bool save();                         // 8f32 (also at exit, like the destructor 1038:4a16)
     long birthTime() const { return birthTime_; }
     void setName(const std::string& name);  // 1038:6f06
     std::string callerText(int32_t caller);  // 1008:ca82
@@ -94,7 +96,6 @@ private:
     bool init();                            // 8a3e
     void birth();                           // 8d28
     bool setBirthHour(int hour);            // 8dca
-    bool save();                            // 8f32
     bool load();                            // 962c
     bool loadTable(int32_t module, std::vector<TableRow>* rows);  // 9fd0
     bool loadPreferences(int hour, int32_t module, PreferenceList* list);  // a186

@@ -1,13 +1,14 @@
 #!/bin/bash
 # Build, run the remake headlessly on Windows (via WSL interop) and convert the frame to PNG.
 # Usage: tools/snap.sh [--fresh] [extra cyberpest.exe args]   -> work/test/snap.png
-# --fresh deletes the save first (newborn pest). WSL's /mnt/c view may not show
-# %APPDATA%\CyberPest\PEST.CFG, so it is deleted from the Windows side.
+# Snapshot runs keep their own save in %TEMP%\CyberPest-test (never the player's pest in
+# %APPDATA%\CyberPest). --fresh deletes that test save first (newborn pest); it is deleted
+# from the Windows side because WSL's /mnt/c view may not show it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [ "${1:-}" = "--fresh" ]; then
   shift
-  (cd /mnt/c && cmd.exe /c 'if exist %APPDATA%\CyberPest\PEST.CFG del %APPDATA%\CyberPest\PEST.CFG' > /dev/null 2>&1) || true
+  (cd /mnt/c && cmd.exe /c 'if exist %TEMP%\CyberPest-test\PEST.CFG del %TEMP%\CyberPest-test\PEST.CFG' > /dev/null 2>&1) || true
 fi
 source ~/tools/env.sh
 mkdir -p work/test

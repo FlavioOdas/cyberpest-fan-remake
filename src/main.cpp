@@ -29,6 +29,7 @@
 #include "adm.h"
 #include "attention.h"
 #include "installer.h"
+#include "pest.h"
 #include "audio.h"
 #include "flc.h"
 #include "surface.h"
@@ -343,6 +344,11 @@ POINT toGame(HWND hwnd, LPARAM lp) {
     return {std::clamp(x * kWidth / w, 0, kWidth - 1), std::clamp(y * kHeight / h, 0, kHeight - 1)};
 }
 
+// The original saves when the pest object is destroyed at exit (destructor 1038:4a16 → 1008:8f32).
+void savePest() {
+    if (auto* pest = dynamic_cast<Pest*>(app.world.find(-105))) pest->save();
+}
+
 LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_PAINT: {
@@ -418,7 +424,11 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         info->ptMinTrackSize = {min.right - min.left, min.bottom - min.top};
         return 0;
     }
+    case WM_ENDSESSION:  // Windows is shutting down or logging off
+        if (wp) savePest();
+        return 0;
     case WM_DESTROY:
+        savePest();
         PostQuitMessage(0);
         return 0;
     }
@@ -597,6 +607,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (admPath.empty()) {
         if (snapshot.empty()) return 0;  // the player cancelled
         admPath = L"PEST.ADM";
+    }
+    if (!snapshot.empty()) {  // headless test runs: a separate save, never the player's pest
+        wchar_t temp[MAX_PATH];
+        const DWORD n = GetTempPathW(MAX_PATH, temp);
+        app.world.setSaveDirectory(std::wstring(temp, n) + L"CyberPest-test");
     }
     if (!loadGame(admPath)) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);

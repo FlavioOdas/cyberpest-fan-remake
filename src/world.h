@@ -81,6 +81,10 @@ public:
     const adm::Database& db() const { return *db_; }
     const GameConfig& config() const { return config_; }
     const Cheats& cheats() const { return cheats_; }
+    // Where the pest is saved; empty = %APPDATA%\\CyberPest. Headless runs use their own
+    // folder so they never touch a player's pest.
+    const std::wstring& saveDirectory() const { return saveDirectory_; }
+    void setSaveDirectory(std::wstring dir) { saveDirectory_ = std::move(dir); }
 
     // Window activation (OnActivate 1000:2192 → 1000:4abc). Idle time counts only while the
     // game window is inactive or minimised; while it is active the player counts as present
@@ -112,6 +116,7 @@ private:
     const adm::Database* db_ = nullptr;
     GameConfig config_;
     Cheats cheats_;
+    std::wstring saveDirectory_;
     bool active_ = true;       // theApp+0x1d6
     long inactiveSince_ = 0;   // theApp+0x1d8
     std::vector<std::unique_ptr<GameObject>> objects_;  // front (highest z) first
