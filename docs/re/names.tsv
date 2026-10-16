@@ -1,0 +1,21 @@
+# Ghidra address	name	comment   (applied by tools/redecompile.sh; keep sorted by address)
+1000:28ce	App_ReadIniSettings	reads PEST.INI incl. [Cheats] into app object fields 0x2a0..0x2ca
+1000:5604	CreateObjectForModule	factory: module class symbol -> C++ object (new + ctor), then vtbl+0x14 create, +0x18 activate
+1000:63ee	Object_SetProperty	(obj, value, symbol): X/Y/Z + bool flags, else generic property list at +0x8c
+1000:8d10	State_Run	executes a state module's command lists (docs/re/state-commands.md)
+1000:9fbe	State_AddHitArea	command -114
+1000:a07e	State_AddEvent	commands -121/-12/-13/-170 (event type 0/1/2/3)
+1000:a21e	Mod_GetOptionalInt	value at index if present
+1018:4e3c	Ini_GetInt	wrapper around GetPrivateProfileInt (inferred from usage)
+1018:8dbe	Mod_ListCount
+1018:8dd6	Mod_ListLength
+1018:8ed0	Mod_ListCommand	list ref symbol at index
+1018:9f98	Db_FindModule	find loaded module by id (returns module object; +0x18 = class symbol)
+1018:ad3e	Db_GetModuleClass	returns class symbol (module->ref) of a module id
+1030:067c	__chkstk	MSC stack probe, AX = locals size
+1038:019a	operator_new
+1038:062e	Mod_GetInt	(mod, valueIdx, listIdx, &out)
+1038:1bfa	Mod_GetLong	(mod, valueIdx, listIdx, &out) — times
+1038:1c2e	Mod_GetRef	file/module reference value
+1038:5546	Random	(lo, hi) inclusive [inf]
+1038:5570	Sprite_ctor	new 0xda

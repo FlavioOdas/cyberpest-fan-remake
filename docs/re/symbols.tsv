@@ -1,0 +1,16 @@
+# ADM symbol id	name	evidence
+-110	Z	SetProperty 1000:63ee -> pos.z (1038:2744); data values 1000..2999 (depth order)
+-122	PROP_BA	SetProperty: bool field 0xba (meaning unknown)
+-178	X	SetProperty 1000:63ee -> pos.x (1038:2704)
+-179	Y	SetProperty 1000:63ee -> pos.y (1038:2724)
+-180	PROP_B6	SetProperty: bool field 0xb6
+-181	PROP_56	SetProperty: bool field 0x56
+-182	PROP_54	SetProperty: bool field 0x54, recomputes rect + redraw when set (visible?)
+-279	PROP_B8	SetProperty: bool field 0xb8
+-309	PROP_6A	SetProperty: bool field 0x6a, redraw when set
+-322	PROP_B2	SetProperty: bool field 0xb2, propagates to child sprite
+-323	PROP_B4	SetProperty: bool field 0xb4
+-105	CLASS_PEST	factory 1000:5604: new 0x2a4, ctor 1038:2d8e, vtable 1038:3f9a
+-107	CLASS_OBJECT	factory 1000:5604: new 0xc2, ctor 1038:2d58, vtable 1038:40de (generic room object)
+-108	STATE_INITIAL	first state of every object module
+-109	CLASS_STATE	ref of state sub-modules
