@@ -57,3 +57,43 @@ State `-108` (closed): image `ADOOR.FLC`, hit area `-123` at (87,118)-(108,144) 
 `-61/-62`, `-12 [-123, -124, 0, 1]` → clicking goes to state `-124`, which plays `ADOOROP.FLC`
 + `ADOOROP.WAV`, has a `-12` to `-131`; `-131` plays `ADOORSHT.FLC/.WAV` then `-132 [-108]`
 back to closed.
+
+## Runtime (how states execute) [obs unless marked]
+
+Classes: object (generic `-107`, vtable `1038:40de`); **runner** (one per entered state,
+0x48 bytes, ctor `1038:2c28`, vtable `1038:3832`); **sprite** (0xda bytes, engine mSprite
+subclass, vtable `1038:5054`).
+
+- `EnterState(obj, state)` (`1000:6100`): retire current runner (stop its sprite, vtbl+0x38),
+  `obj+0x52 = state`, new runner, `State_Run`, then refresh the hover cursor.
+- `Object_Activate` (`1000:5f02`, vtbl+0x18): apply top-level `-2` property lists until the
+  first state sub-module, then `EnterState(first state)`.
+- **Animation sequence per state:** up to three sprites: intro (`-306`, runner `+0x2e`),
+  main (`-111`, `+0x32`), outro (`-431`, `+0x36`); played in that order. Commands after a
+  sprite-creating command attach to that sprite (cues, sound, loop flags).
+- **Sprite per-frame step** (`1000:7df8`): start/flush its sound; fire cues whose frame equals
+  the current frame; move the object along its motion vector (interpolated over the frames);
+  call runner vtbl+0x20 → object vtbl+0x4c (per-frame hook). On the last frame:
+  runner vtbl+0x1c; if looping is off (`+0x94 == 0`) or the loop count (`+0x98`) is reached →
+  fire cues at frame `count` and at `-1` ("end"), apply final displacement, runner vtbl+0x14
+  (finished); else restart (runner vtbl+0x18). `-112 n` (sprite `+0x96`): when 0 the last
+  frame is not redrawn [inf].
+- **Cue time scaling:** cue times in the data are in high-spec frames, divided (`1030:407a` =
+  CRT long divide) by config `-49` (`theApp+0x6d6`): 1 for SLOW/high spec, 2 for FAST/low spec.
+- **Runner finished** (`1000:a4f2`): object vtbl+0x48; pick next sprite (intro→main→outro);
+  if none: runner done (`+0x42`), object vtbl+0x38, and if still current and `+0x46` (next
+  state) set → `EnterState(next)`.
+- **Events** (`State_AddEvent`): `{type, value, state, c, d}`. `-121 [value, state, c]` →
+  type 0 (message), d=1. `-12 [hitarea, state, c, d]` → type 1 (click). `-13` → type 2,
+  `-170` → type 3 (meaning [?]: other mouse actions/drops; type 3 value `-133` special-cased).
+  Matching (`1000:b3b4`): first event with equal type and value → `1000:b44c`: if `d == 0`,
+  only when the object has focus; if `c == 0` and the runner is still playing → set
+  next state, turn looping off, let the animation finish; else `EnterState` immediately.
+- **Messages:** `-119 [target, msg]` → target vtbl+0x64 → runner vtbl+0x3c → object
+  vtbl+0x68 `OnEvent(msg, type 0)`. Target `-117` = the app/director (`1000:4768`).
+  Object lookup (`1000:6982`): `-204` self, `-485` parent object, else room object by id.
+- `-4 [obj]` remove: send `-41` to it, then remove from the room. `-6 [obj, x, y, z, ?]` spawn
+  (`1000:6aa0` → `CreateObjectForModule` at a position). `-8 [obj]` resume (paused flag `+0xb2 =
+  0`), `-10 [obj]` pause (`+0xb2 = 1`, property `-322`).
+- **Hit areas** are relative to the sprite's top-left; image anchor = bottom-centre at (x, y)
+  (confirmed by the `ShowHitAreas` debug drawer `1000:a6e2`; door handle lines up).

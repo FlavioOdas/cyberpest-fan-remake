@@ -14,3 +14,19 @@
 -107	CLASS_OBJECT	factory 1000:5604: new 0xc2, ctor 1038:2d58, vtable 1038:40de (generic room object)
 -108	STATE_INITIAL	first state of every object module
 -109	CLASS_STATE	ref of state sub-modules
+-117	TARGET_APP	-119 target meaning the app/director (1000:4768)
+-204	TARGET_SELF	object lookup 1000:6982
+-485	TARGET_PARENT	object lookup 1000:6982
+-41	MSG_REMOVED	sent to an object before -4 removes it [inf]
+-42	MODULE_CONFIG	config: -43 palette, -44/-45 y range?, -46, -47, -48 handle count, -49 frame scale
+-49	CFG_FRAME_SCALE	1 = high spec, 2 = low spec; cue times divided by it
+-58	MODULE_CURSORS	lists -59..-68: FLC + hotspot
+-59	MODULE_ROOM	room placements (-71) — also cursor list id CCDEFAUL inside -58
+-71	ROOM_PLACE	object, x, y, z
+-83	ROOM_SET	object, property, value
+-306	CMD_INTRO_IMAGE	sprite slot +0x2e, plays first
+-111	CMD_IMAGE	main sprite slot +0x32
+-431	CMD_OUTRO_IMAGE	sprite slot +0x36, plays last
+-183	CMD_LOOP	sprite +0x94 = 1, +0x98 = count
+-112	CMD_REDRAW_LAST	sprite +0x96
+-322	PROP_PAUSED	object +0xb2 (also -8 resume / -10 pause)
