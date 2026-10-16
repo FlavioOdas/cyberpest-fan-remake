@@ -181,11 +181,12 @@ void GameObject::runCommands(Runner& r, const adm::Node& state) {  // State_Run 
         case kOffset:
             if (s) s->offset = Vec3(a[0], a[1], a.get(2, 0));
             break;
-        case kMoveRange: {  // 1000:850a: spread a move over frames t0..t1
+        case kMoveRange: {  // 1000:8d10 → 850a: [t0, t1, target, dx, dy, (dz)], spread over frames t0..t1
             if (!s) break;
             const int t0 = a[0] / frameScale, t1 = a[1] / frameScale;
-            const Vec3 total(a[2], a[3], a[4]);
-            const int target = a.get(5, kTargetSelf);
+            const int target = a[2];
+            Vec3 total(a[3], a[4], a.get(5, 0));
+            if (facing_) total.x = -total.x;  // 1038:52b8, at state entry
             const int n = std::max(1, t1 - t0 + 1);
             Vec3 done;
             for (int i = 0; i < n; ++i) {
@@ -274,7 +275,7 @@ void GameObject::cueMove(int32_t target, const Vec3& delta) {  // 1000:6a52
 
 void GameObject::cueSpawn(int32_t module, const Vec3& offset) {  // 1000:6aa0
     Vec3 d = offset;
-    if (facing_) d.x = -d.x;  // [inf] offsets follow the spawner's facing
+    if (facing_) d.x = -d.x;  // offsets follow the spawner's facing (1038:298e)
     world_.spawn(module, pos_ + d, facing_);
 }
 

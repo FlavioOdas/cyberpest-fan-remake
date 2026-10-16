@@ -28,7 +28,7 @@ ref; `1000:a21e` get optional value with default; `1018:8dd6` list length.
 | -3 | time, sym, value | timed set property (`1000:83da`) [obs] |
 | -4 | x | object vtbl+0x28 if no sprite, else `1000:8846` [obs]; meaning [?] |
 | -5 | time, x | timed `1000:8846` [obs] |
-| -6 | a, b, c, d, e | object vtbl+0x24 / `1000:8796` with a rect-like value (`1038:0662`) [obs]; meaning [?] |
+| -6 | module, dx, dy, dz, visible | spawn: object vtbl+0x24 / cue kind 2 (`1000:8796`) → `1000:6aa0`: offset x flipped when the spawner faces (`1038:298e`), added to its position, `CreateObjectForModule(module, pos, facing = spawner's, visible)`; the last value is the new object's +0xb2 visible flag (`1000:5e1a`) and is 1 in all 22 data uses [obs, 2026-10-17] |
 | -7 | time, a..e | timed `1000:8796` [obs] |
 | -8 | x | object vtbl+0x2c / `1000:88d4` [obs] |
 | -9 | time, x | timed `1000:88d4` [obs] |
@@ -41,7 +41,7 @@ ref; `1000:a21e` get optional value with default; `1018:8dd6` list length.
 | -111 | FLC file | create main sprite (new 0xda, `1038:5570`) into slot `+0x32`, make current [obs] |
 | -306 | FLC file | create sprite into slot `+0x2e`, make current [obs] |
 | -431 | FLC file | create sprite into slot `+0x36`, make current [obs] |
-| -112 | n | `1038:56e4(sprite, n)` [obs]; data usually 1 [inf: play mode/loop] |
+| -112 | n | `1038:56e4(sprite, n)` [obs]; all 123 data uses are 1, so the 0 case (last frame not redrawn) never occurs [obs, 2026-10-17] |
 | -183 | n | `1038:56ae(sprite, 1, n)` [obs] |
 | -114 | id, x1, y1, x2, y2, [cursor1], [cursor2] | define hit area (`1000:9fbe`) [obs] |
 | -116 | WAV | attach sound to current sprite (`1000:89f0`, `1018:c5d6`) [obs] |
@@ -90,6 +90,8 @@ subclass, vtable `1038:5054`).
 - **Events** (`State_AddEvent`): `{type, value, state, c, d}`. `-121 [value, state, c]` →
   type 0 (message), d=1. `-12 [hitarea, state, c, d]` → type 1 (click). `-13` → type 2,
   `-170` → type 3 (meaning [?]: other mouse actions/drops; type 3 value `-133` special-cased).
+  The loader `1000:8d10` registers only types 0–3; no original OnEvent hook tests type 4, so
+  type 4 (runner +0x28) has no effect with this data [obs, 2026-10-17].
   Matching (`1000:b3b4`): first event with equal type and value → `1000:b44c`: if `d == 0`,
   only when the object has focus; if `c == 0` and the runner is still playing → set
   next state, turn looping off, let the animation finish; else `EnterState` immediately.
@@ -102,3 +104,15 @@ subclass, vtable `1038:5054`).
   cues; see the visibility evidence in `engine-runtime.md`.
 - **Hit areas** are relative to the sprite's top-left; image anchor = bottom-centre at (x, y)
   (confirmed by the `ShowHitAreas` debug drawer `1000:a6e2`; door handle lines up).
+
+## Checked 2026-10-17 (Claude)
+
+- `-157 x, y` → state +0x0A point; the runner hit test `1000:acc0` uses pointer − position,
+  x negated when facing (`1038:2950`), − this offset (`1038:17ec`), + (main sprite width/2,
+  shown sprite height) (`1038:54d2`). The remake's `GameObject::hitTest` matches. [obs]
+- `-493 t0, t1, target, dx, dy, [dz]` → `1000:850a`: one move cue (kind 1) per frame t0..t1
+  (times ÷ frame scale) for `target` (-204 self, -485 parent), moving by the vector's
+  cumulative share `v·(i+1)/n` minus what was already applied; the vector's x is negated if
+  the object faces (`1038:52b8`) when the state is entered. Used by pest bite/bury states
+  -259, -263, -511. The remake previously read target and vector from the wrong positions;
+  fixed. [obs]
