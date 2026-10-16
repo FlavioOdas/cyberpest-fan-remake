@@ -53,6 +53,11 @@ class Namer:
         return f"{mod}.{e['name']}" if e else f"{mod}.#{ordinal}"
 
 
+def _inside_far_call(seg, loc):
+    """True when the segment fixup belongs to a `call/jmp far seg:off` instruction (opcode 9A/EA)."""
+    return loc >= 3 and seg.data[loc - 3] in (0x9A, 0xEA)
+
+
 def label(seg, off):
     return f"sub_{seg}_{off:04x}"
 
@@ -128,9 +133,17 @@ def main(exe, out):
     for seg, off in ne.entries.values():
         starts[seg].add(off)
     for seg in ne.segments:
-        for src, t in seg.fixups.values():
-            if t[0] == "internal" and src == SRC_FARADDR and 0 < t[1] <= len(ne.segments) and ne.segments[t[1] - 1].is_code:
+        for loc, (src, t) in seg.fixups.items():
+            if t[0] != "internal" or not 0 < t[1] <= len(ne.segments) or not ne.segments[t[1] - 1].is_code:
+                continue
+            if src == SRC_FARADDR:
                 starts[t[1]].add(t[2])
+            elif src == SRC_SEGMENT and loc >= 2:
+                # Far pointer stored as offset word + segment fixup (vtables, callback tables).
+                off = struct.unpack_from("<H", seg.data, loc - 2)[0]
+                target = ne.segments[t[1] - 1]
+                if off < len(target.data) and not (seg.is_code and _inside_far_call(seg, loc)):
+                    starts[t[1]].add(off)
     for seg in ne.segments:
         if not seg.is_code:
             continue

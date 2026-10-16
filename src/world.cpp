@@ -15,7 +15,7 @@ enum : int32_t {
     kOnEvent3 = -170, kOnMessage = -121, kIntro = -306, kMain = -111, kOutro = -431,
     kHoldLast = -112, kLoop = -183, kHitArea = -114, kSound = -116, kSend = -119, kSendAt = -176,
     kNext = -132, kRandomNext = -151,
-    kTargetSelf = -204,
+    kTargetSelf = -204, kOwnPosition = -594,
 };
 
 Command toCommand(const adm::Node& list) {
@@ -74,6 +74,15 @@ Object* World::spawn(int32_t moduleId, int x, int y, int z, uint32_t nowMs) {
         if (c.tag == adm::Tag::Map) {
             firstState = c.id;
             break;
+        }
+        if (c.tag == adm::Tag::List && c.id == kOwnPosition) {
+            // Certificate class (-593, create 1010:47c6) positions itself from list -594 [inf].
+            const std::vector<int32_t> p = adm::intValues(c);
+            if (p.size() >= 3) {
+                obj->x = p[0];
+                obj->y = p[1];
+                obj->z = p[2];
+            }
         }
         if (c.tag == adm::Tag::List && c.ref == kSet) {
             const std::vector<int32_t> p = adm::intValues(c);
