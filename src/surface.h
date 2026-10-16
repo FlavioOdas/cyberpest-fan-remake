@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "flc.h"
@@ -21,6 +22,10 @@ public:
     // (the game's transparency key is palette index 0, pure green); pass -1 to copy all.
     // `mirror` flips the image horizontally (objects facing the other way).
     void blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent = 0, bool mirror = false);
+    void fillRect(int left, int top, int right, int bottom, uint8_t index);
+    void drawText(const std::string& value, int left, int top, int right, int bottom,
+                  const std::string& fontFace, int fontSize, Rgb foreground, Rgb background,
+                  const Palette& palette, bool autoFit = false);
 
 private:
     int width_, height_;

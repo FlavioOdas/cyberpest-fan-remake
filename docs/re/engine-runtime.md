@@ -73,3 +73,14 @@ Room placements default to visible=1 (`1000:055b`); a sixth placement value over
 The pest's top-level `[-322, 1]` therefore keeps it visible. The hatch sends `-153`, which
 sets mode 2 and enters -324; the normal walking logic brings it in from x=-100. No extra
 wake-up or show message is needed. `1008:6736` handles later re-entry after removal (-1).
+
+## Text controls (remake layer, 2026-10-16)
+
+Original certificate and panel classes create Win16 child edit controls through
+`1010:1a1c`, show them at the animation's last frame, and use `1038:6498` to read
+their text. The remake's `TextField` reads per-module rectangles, font and RGB lists;
+`Surface::drawText` renders with native GDI into an indexed bitmap so snapshots and
+the live window use the same pixels. `World::inputChar` forwards `WM_CHAR` to the
+active object. The visible output and typed-word path are verified, but caret,
+selection, clipboard and original control styles are not yet replicated. [obs:
+original control calls and module data; inf: equivalent overlay implementation]

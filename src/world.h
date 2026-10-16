@@ -35,13 +35,14 @@ public:
 
     // Per tick: advance animations, run per-frame hooks, deliver the hover event (1000:07c6).
     void tick(uint32_t nowMs);
-    void draw(Surface& target) const;
+    void draw(Surface& target, const Palette& palette) const;
 
     // Input in 640x480 coordinates (1000:103c / 1000:1206 / 1000:135c).
     void mouseMove(int x, int y);
     void buttonDown(int x, int y);
     void buttonUp(int x, int y);
     void mouseLeave();
+    void inputChar(wchar_t character);
     int32_t cursor() const { return cursor_; }
     bool buttonIsDown() const { return buttonDown_; }
     Point2 mouse() const { return mouse_; }
@@ -65,6 +66,8 @@ public:
     uint32_t now() const { return now_; }
     GameObject* focus() const { return focus_; }
     void takeFocus(GameObject* obj) { focus_ = obj; }
+    void focusText(GameObject* obj) { textFocus_ = obj; }
+    void clearTextFocus(GameObject* obj) { if (textFocus_ == obj) textFocus_ = nullptr; }
     void setCursor(int32_t id) { cursor_ = id; }
     const Flc* image(const adm::FileRef& file);
     const Sound* sound(const adm::FileRef& file);
@@ -89,6 +92,7 @@ private:
     AppMessage appMessage_;
     std::function<void()> attention_;
     GameObject* focus_ = nullptr;
+    GameObject* textFocus_ = nullptr;
     int32_t cursor_ = 0;
     Point2 mouse_{-1, -1};
     bool buttonDown_ = false;

@@ -23,6 +23,9 @@ public:
 
     // Debug/cheat access.
     std::string describeState() const;
+    const std::string& name() const { return name_; }
+    long birthTime() const { return birthTime_; }
+    void setName(const std::string& name);  // 1038:6f06
     void setAdvanceTime(bool on) { advanceTime_ = on; }  // [Cheats] AdvanceTime (f_198)
 
 private:

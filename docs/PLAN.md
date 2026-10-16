@@ -34,4 +34,4 @@ over redesign; mark every deliberate deviation in that map.
 
 M0 done · M1 done (formats) · M2 mostly done (engine + pest understood; other classes listed in
 docs/re/classes.md) · M3 done · M4 in progress (generic objects, walking pest and five shelf
-special classes ported; 14 special classes remain, including the partial certificate) · M5 not started.
+special classes and the certificate ported; megaphone text partial, 13 special classes remain) · M5 not started.

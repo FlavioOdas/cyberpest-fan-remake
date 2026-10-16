@@ -111,6 +111,11 @@ void Pest::birth() {  // 8d28: born now, in this hour
     respawnOwnedObjects();
 }
 
+void Pest::setName(const std::string& name) {  // 1038:6f06
+    name_ = name;
+    save();
+}
+
 bool Pest::setBirthHour(int hour) {  // 8dca
     birthHour_ = hour;
     if (const adm::Node* table = adm::childModule(*module_, kBirthPersonality)) {

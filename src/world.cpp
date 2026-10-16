@@ -13,6 +13,7 @@ constexpr int32_t kConfigModule = -42, kDefaultCursor = -59;
 bool World::load(const adm::Database& db, int32_t roomId, std::string* error) {
     db_ = &db;
     objects_.clear();
+    textFocus_ = nullptr;
     if (const adm::Node* cfg = db.findModule(kConfigModule)) {
         for (const adm::Node& c : cfg->children) {
             const std::vector<int32_t> v = c.tag == adm::Tag::List ? adm::intValues(c) : std::vector<int32_t>{};
@@ -83,6 +84,7 @@ void World::remove(GameObject* obj) {
     for (auto it = objects_.begin(); it != objects_.end(); ++it) {
         if (it->get() == obj) {
             if (focus_ == obj) focus_ = nullptr;
+            if (textFocus_ == obj) textFocus_ = nullptr;
             for (auto& o : objects_) {
                 if (o->parent() == obj) o->setParent(nullptr);
             }
@@ -151,7 +153,11 @@ void World::mouseLeave() {
     cursor_ = kDefaultCursor;
 }
 
-void World::draw(Surface& target) const {
+void World::inputChar(wchar_t character) {
+    if (textFocus_) textFocus_->onTextChar(character);
+}
+
+void World::draw(Surface& target, const Palette& palette) const {
     std::vector<const GameObject*> order;
     for (const auto& o : objects_) {
         if (o->visible() && o->shownSprite() && o->shownSprite()->flc) order.push_back(o.get());
@@ -166,6 +172,7 @@ void World::draw(Surface& target) const {
         if (o->facing()) off.x = -off.x;
         const Vec3 p = o->position() + off;
         target.blit(f.frames()[size_t(frame)].data(), f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(), 0);
+        o->drawOverlay(target, palette);
     }
 }
 

@@ -16,6 +16,7 @@
 
 class World;
 class GameObject;
+class Surface;
 
 // A command scheduled on a sprite's timeline (1000:7be4).
 struct Cue {
@@ -114,6 +115,8 @@ public:
     virtual void onEvent(GameObject* from, int32_t value, int type);// +0x68
     // Text typed into an object (megaphone speech bubble, 1038:6498); empty for most classes.
     virtual std::string text() const { return {}; }
+    virtual void onTextChar(wchar_t) {}
+    virtual void drawOverlay(Surface&, const Palette&) const {}
 
     // ---- engine services used by object classes ----
     void enterState(int32_t state);  // 1000:6100

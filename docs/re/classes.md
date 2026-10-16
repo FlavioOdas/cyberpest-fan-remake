@@ -20,6 +20,27 @@ distinct from the actual position +0xa8; the remake now tracks both. Wrapper -12
 removes itself on entering -559 if another room object has property -558
 (`1010:2c1c`). [obs: original code, modules -102/-129/-338]
 
+## Certificate and megaphone text (2026-10-16)
+
+Class -593 reads its placement -594, three edit rectangles -51/-52/-53, font -54,
+and colors -55/-56 from module -106 (`1010:47c6`). Its state-start hook
+`1010:513a` bypasses the certificate when the pest already has a name, fills the
+date/time controls for a newborn, saves the typed name on -595 through
+`1038:6f06`, and hides controls on -4. The last-frame hook `1010:502a`
+shows/focuses them; `1010:50e8` refocuses on hover. [obs: original code/data]
+The remake uses an indexed-surface text overlay and `WM_CHAR` in place of the original
+Win16 child edit controls. It formats a compact `dd/MM/yy` date and auto-fits it to
+the narrow field; this is [inf], not a byte-exact port of the original `sShortDate`
+WIN.INI formatting. Editing currently appends/backspaces ANSI-range characters,
+not the full native edit-control behavior (selection, cursor motion, paste).
+
+Class -189 has a text control read by the pest (`1038:6274` reads its +0xc2 window).
+The remake now implements that typed `text()`, focus/show/hide hooks
+`1010:17f4/188c/18de`, and the -203 Enter path that sends -201 via module data.
+Its second original child control and exact text-control styling/layout still need
+an audit of `1010:0f6e`; treat this class as partial. [obs: first text source and hooks;
+inf: rendered control layout]
+
 | class | size | ctor | vtable | overridden slots (offset=function) |
 |---|---|---|---|---|
 | -593 | 0x15e | 1038:3308 | 1038:3e9a | +0x04=1038:4890 +0x14=1010:47c6 +0x34=1010:513a +0x44=1010:502a +0x68=1010:50e8 |

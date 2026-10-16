@@ -64,7 +64,10 @@
 1010:06b0	vfn_1010_06b0	vtable/callback target (auto)
 1010:07a2	vfn_1010_07a2	vtable/callback target (auto)
 1010:0b8e	vfn_1010_0b8e	vtable/callback target (auto)
-1010:0f6e	vfn_1010_0f6e	vtable/callback target (auto)
+1010:0f6e	MegaphonePanel_Create	text-control setup for module -189
+1010:17f4	MegaphonePanel_OnLastFrame	show and focus its text controls
+1010:188c	MegaphonePanel_OnEvent	focus text control on hover
+1010:18de	MegaphonePanel_OnStateStart	hide text controls in closing state
 1010:1930	vfn_1010_1930	vtable/callback target (auto)
 1010:19e0	vfn_1010_19e0	vtable/callback target (auto)
 1010:1c47	vfn_1010_1c47	vtable/callback target (auto)
@@ -72,7 +75,10 @@
 1010:2cf2	vfn_1010_2cf2	vtable/callback target (auto)
 1010:33e6	vfn_1010_33e6	vtable/callback target (auto)
 1010:3400	vfn_1010_3400	vtable/callback target (auto)
-1010:47c6	vfn_1010_47c6	vtable/callback target (auto)
+1010:47c6	Certificate_Create	position and text-control setup
+1010:502a	Certificate_OnLastFrame	show and focus name/date/time controls
+1010:50e8	Certificate_OnEvent	focus name control on hover
+1010:513a	Certificate_OnStateStart	populate date/time, save name, hide controls
 1010:53a4	vfn_1010_53a4	vtable/callback target (auto)
 1010:68fe	vfn_1010_68fe	vtable/callback target (auto)
 1010:6d3e	vfn_1010_6d3e	vtable/callback target (auto)
@@ -456,6 +462,7 @@
 1038:68fe	vfn_1038_68fe	vtable/callback target (auto)
 1038:6a7a	vfn_1038_6a7a	vtable/callback target (auto)
 1038:6b2a	vfn_1038_6b2a	vtable/callback target (auto)
+1038:6f06	Pest_SetName	store certificate name and save
 1038:708c	vfn_1038_708c	vtable/callback target (auto)
 1038:729a	vfn_1038_729a	vtable/callback target (auto)
 1038:72de	vfn_1038_72de	vtable/callback target (auto)

@@ -5,6 +5,7 @@
 //   --time <ms>         with --snapshot: simulated time before the frame is taken
 //   --click <x,y,ms>    with --snapshot: simulated left click (640x480 coordinates); repeatable
 //   --drag <x1,y1,x2,y2,ms>  with --snapshot: hold and move over 400 ms; repeatable
+//   --type <text,ms>   with --snapshot: type into the active text field; repeatable
 //   --dump              with --snapshot: print every object's state to stdout
 #include <windows.h>
 #include <shellapi.h>
@@ -25,7 +26,7 @@
 namespace {
 
 constexpr int kWidth = 640, kHeight = 480;
-constexpr int32_t kCertificate = -106, kNameAccepted = -203, kAppClose = -156, kAppMinimize = -118;
+constexpr int32_t kAppClose = -156, kAppMinimize = -118;
 constexpr int32_t kCursorTable = -58, kDefaultCursor = -59;
 
 struct Cursor {
@@ -96,7 +97,7 @@ bool loadGame(const std::wstring& admPath) {
 
 void compose(DWORD now) {
     app.screen.fill(0);
-    app.world.draw(app.screen);
+    app.world.draw(app.screen, app.palette);
     const Point2 mouse = app.world.mouse();
     if (mouse.x < 0) return;
     auto it = app.cursors.find(app.world.cursor());
@@ -174,8 +175,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     case WM_CHAR:
-        // Stand-in until the certificate class (-593) is ported: Enter accepts the (unnamed) pest.
-        if (wp == VK_RETURN) app.world.send(kCertificate, kNameAccepted);
+        app.world.inputChar(wchar_t(wp));
         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -237,11 +237,18 @@ struct Drag {
     bool finished = false;
 };
 
+struct TypedText {
+    std::wstring value;
+    DWORD at;
+};
+
 int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> clicks,
-                std::vector<Drag> drags, bool dump) {
+                std::vector<Drag> drags, std::vector<TypedText> typed, bool dump) {
     std::sort(clicks.begin(), clicks.end(), [](const Click& a, const Click& b) { return a.at < b.at; });
     std::sort(drags.begin(), drags.end(), [](const Drag& a, const Drag& b) { return a.at < b.at; });
+    std::sort(typed.begin(), typed.end(), [](const TypedText& a, const TypedText& b) { return a.at < b.at; });
     size_t next = 0;
+    size_t nextText = 0;
     for (DWORD t = 0; t <= duration; t += 10) {
         app.world.tick(t);
         for (; next < clicks.size() && clicks[next].at <= t; ++next) {
@@ -261,6 +268,9 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
                 drag.finished = true;
             }
         }
+        for (; nextText < typed.size() && typed[nextText].at <= t; ++nextText) {
+            for (wchar_t character : typed[nextText].value) app.world.inputChar(character);
+        }
     }
     compose(duration);
     if (dump) std::fputs(app.world.describe().c_str(), stdout);
@@ -277,6 +287,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     DWORD duration = 0;
     std::vector<Click> clicks;
     std::vector<Drag> drags;
+    std::vector<TypedText> typed;
     bool dump = false;
     for (int i = 1; i < argc; ++i) {
         const std::wstring key = argv[i];
@@ -296,6 +307,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
             Drag drag{};
             if (swscanf(value.c_str(), L"%d,%d,%d,%d,%lu", &drag.fromX, &drag.fromY,
                         &drag.toX, &drag.toY, &drag.at) == 5) drags.push_back(drag);
+        } else if (key == L"--type") {
+            const size_t comma = value.rfind(L',');
+            if (comma != std::wstring::npos) {
+                const DWORD at = DWORD(_wtol(value.c_str() + comma + 1));
+                typed.push_back({value.substr(0, comma), at});
+            }
         }
     }
     LocalFree(argv);
@@ -307,6 +324,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);
         return 1;
     }
-    if (!snapshot.empty()) return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), dump);
+    if (!snapshot.empty())
+        return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump);
     return runWindow(instance);
 }
