@@ -1,32 +1,45 @@
 // CyberPest remake. Loads the user's original PEST.ADM and runs the room defined in it.
 // Options:
 //   --adm <path>        PEST.ADM to load (default: next to the exe, then the current folder)
-//   --snapshot <bmp>    render the first frame to an 8-bit BMP and exit (no window, no sound)
+//   --snapshot <bmp>    render a frame to an 8-bit BMP and exit (no window, no sound)
+//   --time <ms>         with --snapshot: simulated time before the frame is taken
+//   --click <x,y,ms>    with --snapshot: simulated left click (640x480 coordinates); repeatable
+//   --dump              with --snapshot: print every object's state to stdout
 #include <windows.h>
 #include <shellapi.h>
 
 #include <algorithm>
-#include <memory>
+#include <cstdio>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "adm.h"
 #include "audio.h"
 #include "flc.h"
-#include "scene.h"
 #include "surface.h"
 #include "symbols.h"
-#include "wav.h"
+#include "world.h"
 
 namespace {
 
 constexpr int kWidth = 640, kHeight = 480;
+constexpr int32_t kCursorTable = -58, kDefaultCursor = -59, kFrameScaleConfig = -49, kConfig = -42;
+
+struct Cursor {
+    const Flc* flc = nullptr;
+    int hotX = 0, hotY = 0;
+};
 
 struct App {
     adm::Database db;
     Palette palette{};
     Surface screen{kWidth, kHeight};
-    Scene scene;
+    World world;
     Mixer mixer;
+    std::unordered_map<int32_t, Cursor> cursors;
+    std::vector<std::unique_ptr<Flc>> cursorImages;
+    POINT mouse = {-1, -1};  // in 640x480 space; -1 = outside the window
     std::wstring error;
 } app;
 
@@ -37,6 +50,32 @@ std::wstring exeDirectory() {
     const DWORD n = GetModuleFileNameW(nullptr, path, MAX_PATH);
     std::wstring dir(path, n);
     return dir.substr(0, dir.find_last_of(L"\\/") + 1);
+}
+
+int configInt(int32_t listId, int fallback) {
+    const adm::Node* config = app.db.findModule(kConfig);
+    if (!config) return fallback;
+    for (const adm::Node& c : config->children) {
+        if (c.tag == adm::Tag::List && c.id == listId) {
+            const std::vector<int32_t> v = adm::intValues(c);
+            return v.empty() ? fallback : v[0];
+        }
+    }
+    return fallback;
+}
+
+void loadCursors() {
+    const adm::Node* table = app.db.findModule(kCursorTable);
+    if (!table) return;
+    for (const adm::Node& c : table->children) {
+        const adm::FileRef* file = c.tag == adm::Tag::List ? adm::fileValue(c) : nullptr;
+        if (!file) continue;
+        auto flc = std::make_unique<Flc>();
+        if (!flc->open(app.db.bytes(*file)) || !flc->decodeAll() || flc->frames().empty()) continue;
+        const std::vector<int32_t> hot = adm::intValues(c);
+        app.cursors[c.id] = {flc.get(), hot.size() > 0 ? hot[0] : 0, hot.size() > 1 ? hot[1] : 0};
+        app.cursorImages.push_back(std::move(flc));
+    }
 }
 
 bool loadGame(const std::wstring& admPath) {
@@ -51,19 +90,28 @@ bool loadGame(const std::wstring& admPath) {
         app.error = L"PALETTE.BMP missing from PEST.ADM.";
         return false;
     }
-    if (!app.scene.loadRoom(app.db, sym::RoomScreen, &err)) {
+    loadCursors();
+    app.world.setSoundPlayer([](const Sound* s) { app.mixer.play(0, s); });
+    if (!app.world.load(app.db, sym::RoomScreen, configInt(kFrameScaleConfig, 1), &err)) {
         app.error = L"Can't build the room: " + widen(err);
         return false;
     }
     return true;
 }
 
-void compose() {
+void compose(DWORD now) {
     app.screen.fill(0);
-    app.scene.draw(app.screen);
+    app.world.draw(app.screen);
+    if (app.mouse.x < 0) return;
+    const int32_t id = app.world.hover(app.mouse.x, app.mouse.y);
+    auto it = app.cursors.find(id ? id : kDefaultCursor);
+    if (it == app.cursors.end()) it = app.cursors.find(kDefaultCursor);
+    if (it == app.cursors.end()) return;
+    const Cursor& c = it->second;
+    const int frame = int(now / DWORD(std::max(c.flc->frameDelayMs(), 20)) % DWORD(c.flc->frameCount()));
+    app.screen.blit(c.flc->frames()[frame].data(), c.flc->width(), c.flc->height(), app.mouse.x - c.hotX,
+                    app.mouse.y - c.hotY);
 }
-
-void tick(DWORD) {}
 
 void present(HWND hwnd, HDC dc) {
     struct {
@@ -84,6 +132,13 @@ void present(HWND hwnd, HDC dc) {
                   reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS, SRCCOPY);
 }
 
+POINT toGame(HWND hwnd, LPARAM lp) {
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+    const int x = short(LOWORD(lp)), y = short(HIWORD(lp));
+    return {rc.right ? x * kWidth / rc.right : 0, rc.bottom ? y * kHeight / rc.bottom : 0};
+}
+
 LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_PAINT: {
@@ -95,6 +150,26 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_ERASEBKGND:
         return 1;
+    case WM_SETCURSOR:
+        if (LOWORD(lp) == HTCLIENT) {
+            SetCursor(nullptr);  // the game draws its own animated cursors
+            return TRUE;
+        }
+        break;
+    case WM_MOUSEMOVE: {
+        app.mouse = toGame(hwnd, lp);
+        TRACKMOUSEEVENT tme = {sizeof tme, TME_LEAVE, hwnd, 0};
+        TrackMouseEvent(&tme);
+        return 0;
+    }
+    case WM_MOUSELEAVE:
+        app.mouse = {-1, -1};
+        return 0;
+    case WM_LBUTTONDOWN: {
+        const POINT p = toGame(hwnd, lp);
+        app.world.click(p.x, p.y, GetTickCount());
+        return 0;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -114,7 +189,7 @@ int runWindow(HINSTANCE instance) {
     RECT work;
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
     const int scale = std::max<int>(1, std::min<int>((work.right - work.left) * 9 / 10 / kWidth,
-                                           (work.bottom - work.top) * 9 / 10 / kHeight));
+                                                     (work.bottom - work.top) * 9 / 10 / kHeight));
     const DWORD style = WS_OVERLAPPEDWINDOW;
     RECT rc = {0, 0, kWidth * scale, kHeight * scale};
     AdjustWindowRect(&rc, style, FALSE);
@@ -133,13 +208,31 @@ int runWindow(HINSTANCE instance) {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
-        tick(GetTickCount());
-        compose();
+        const DWORD now = GetTickCount();
+        app.world.tick(now);
+        compose(now);
         HDC dc = GetDC(hwnd);
         present(hwnd, dc);
         ReleaseDC(hwnd, dc);
         MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
     }
+}
+
+struct Click {
+    int x, y;
+    DWORD at;
+};
+
+int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> clicks, bool dump) {
+    std::sort(clicks.begin(), clicks.end(), [](const Click& a, const Click& b) { return a.at < b.at; });
+    size_t next = 0;
+    for (DWORD t = 0; t <= duration; t += 10) {
+        for (; next < clicks.size() && clicks[next].at <= t; ++next) app.world.click(clicks[next].x, clicks[next].y, t);
+        app.world.tick(t);
+    }
+    compose(duration);
+    if (dump) std::fputs(app.world.describe().c_str(), stdout);
+    return writeBmp(path.c_str(), app.screen, app.palette) ? 0 : 2;
 }
 
 }  // namespace
@@ -149,10 +242,24 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     int argc = 0;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     std::wstring admPath, snapshot;
-    for (int i = 1; i + 1 < argc; i += 2) {
-        const std::wstring key = argv[i], value = argv[i + 1];
+    DWORD duration = 0;
+    std::vector<Click> clicks;
+    bool dump = false;
+    for (int i = 1; i < argc; ++i) {
+        const std::wstring key = argv[i];
+        if (key == L"--dump") {
+            dump = true;
+            continue;
+        }
+        if (i + 1 >= argc) break;
+        const std::wstring value = argv[++i];
         if (key == L"--adm") admPath = value;
         else if (key == L"--snapshot") snapshot = value;
+        else if (key == L"--time") duration = DWORD(_wtoi(value.c_str()));
+        else if (key == L"--click") {
+            Click c{};
+            if (swscanf(value.c_str(), L"%d,%d,%lu", &c.x, &c.y, &c.at) == 3) clicks.push_back(c);
+        }
     }
     LocalFree(argv);
     if (admPath.empty()) {
@@ -163,9 +270,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);
         return 1;
     }
-    if (!snapshot.empty()) {
-        compose();
-        return writeBmp(snapshot.c_str(), app.screen, app.palette) ? 0 : 2;
-    }
+    if (!snapshot.empty()) return runSnapshot(snapshot, duration, std::move(clicks), dump);
     return runWindow(instance);
 }

@@ -4,8 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source ~/tools/env.sh
-cmake --build build -j16 2>&1 | grep -E "error|warning" || true
 mkdir -p work/test
+if ! cmake --build build -j16 > work/build.log 2>&1; then grep -E "error" work/build.log | head -20; exit 1; fi
+grep -E "warning" work/build.log | head -10 || true
 ./build/cyberpest.exe --adm "$(wslpath -w original/extracted/APP/SLOW/PEST.ADM)" \
   --snapshot "$(wslpath -w work/test)\\snap.bmp" "$@"
 python3 - <<'PY'
