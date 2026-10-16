@@ -16,7 +16,8 @@ public:
     std::string text() const override { return words_.value; }
 
 private:
-    TextField words_;
+    TextField words_;  // +0xc2
+    TextField name_;   // +0xfa
 };
 
 class PhoneBubble final : public GameObject {

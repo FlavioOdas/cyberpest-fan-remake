@@ -37,9 +37,14 @@ not the full native edit-control behavior (selection, cursor motion, paste).
 Class -189 has a text control read by the pest (`1038:6274` reads its +0xc2 window).
 The remake now implements that typed `text()`, focus/show/hide hooks
 `1010:17f4/188c/18de`, and the -203 Enter path that sends -201 via module data.
-Its second original child control and exact text-control styling/layout still need
-an audit of `1010:0f6e`; treat this class as partial. [obs: first text source and hooks;
-inf: rendered control layout]
+`1010:0f6e` creates two edit controls (2026-10-17 audit, Claude): +0xc2, the typed
+words, from rect -195, font -196 (Courier New 40) and colours -197/-198 (black on
+white), style 0x80 (ES_AUTOHSCROLL); and +0xfa, read-only (0x800 = ES_READONLY),
+holding a copy of the pest's name (`1038:68a6` → pest +0x218), from rect -51 (the row
+above), font -192 and colours -193/-194 (dark red on white). `1010:17f4` shows both
+(SW_SHOW) and focuses +0xc2; `1010:18de` hides both on -4. The remake draws both as
+GDI overlays. [obs: decompile of 1010:0f6e/17f4/18de, module -189 lists; inf: which
+of each colour pair is text vs background, from the values]
 
 ## Phone and caller bubble (2026-10-16)
 

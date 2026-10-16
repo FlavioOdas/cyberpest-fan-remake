@@ -5,20 +5,24 @@
 
 bool MegaphonePanel::create(const Vec3& pos, bool facing) {  // 1010:0f6e
     if (!GameObject::create(pos, facing)) return false;
-    words_.configure(*module_, -51, -192, -193, -194);
+    // Two edit controls: +0xc2 typed words (rect -195, font -196, colours -197/-198) and
+    // +0xfa read-only pest name above it (rect -51, font -192, colours -193/-194).
+    words_.configure(*module_, -195, -196, -197, -198);
+    name_.configure(*module_, -51, -192, -193, -194);
+    if (const auto* pest = dynamic_cast<const Pest*>(world_.find(-105))) name_.value = pest->name();
     return true;
 }
 
 void MegaphonePanel::onStateStart() {  // 1010:18de
     if (state() == -4) {
-        words_.shown = false;
+        words_.shown = name_.shown = false;
         world_.clearTextFocus(this);
     }
 }
 
 void MegaphonePanel::onLastFrame(Sprite&) {  // 1010:17f4
     if (state() == -108) {
-        words_.shown = true;
+        words_.shown = name_.shown = true;
         world_.focusText(this);
     }
 }
@@ -34,6 +38,7 @@ void MegaphonePanel::onTextChar(wchar_t character) {
 }
 
 void MegaphonePanel::drawOverlay(Surface& surface, const Palette& palette) const {
+    name_.draw(surface, palette, position());
     words_.draw(surface, palette, position());
 }
 
