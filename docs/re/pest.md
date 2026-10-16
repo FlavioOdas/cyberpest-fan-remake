@@ -96,3 +96,16 @@ s), `f_128/12a/12c`=-415 5,10,20, `f_12e/130`=-416 25,75 (stomach bands), `f_132
   (`c3b6`, `c426`, `c472`, `bc00` reward/punish), -1 re-enter after removal (`6736`), …
 - **Save** (`8f32` → `PEST.TMP` renamed to `PEST.CFG`, magic 0x3b978a5e) / **load** (`962c`).
   The remake uses its own text save and does not read the original binary format.
+
+## Decide-loop hang in the original (2026-10-17, Claude)
+
+`1008:0962` loops while the state is -324. Mode 2 with a running timer (+0x15a set, +0x164
+not expired, +0x172 not interrupted) calls `1008:32f8`, which only acts for activity 1
+(walk across), 3 (peep) or mode 5; for anything else nothing changes and the loop never
+ends. It is reachable: idling sets mode 5 and starts a timer while +0x142 keeps the last
+activity (e.g. 8); reopening the curtain/hatch (-76 state -131 handles -154/-155 → -124,
+which sends -153) sets mode 2 and enters -324. Found by `tools/fuzz.py` (seed 1: a click
+on the right handle at 20.1 s). [obs: same code paths in the original; inf: the original
+would freeze too — on Windows 3.1 the whole system.] The remake wanders instead when the
+timed step does nothing, and the loop has a 1000-iteration safety valve (logs to stderr;
+never fired in 20 fuzz seeds).

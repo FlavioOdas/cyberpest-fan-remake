@@ -355,8 +355,14 @@ void Pest::onFrame() {  // 69b2
 void Pest::decide() {  // 0962
     bool startActivityAllowed = true;
     idleChoice_ = 0;
-    for (;;) {
+    for (int spins = 0;; ++spins) {
         if (state() != kStDecide) return;
+        if (spins > 1000) {  // safety valve (not in the original): never freeze the game
+            std::fprintf(stderr, "pest: decide loop stuck (mode %d, activity %d)\n", mode_, activity_);
+            const int32_t s = idleState();
+            if (s != kStDecide) enterState(s);
+            return;
+        }
         forgetMissingOwnedObjects();
         if (property(-448)) {  // flea spray in progress
             enterState(-447);
@@ -418,8 +424,13 @@ void Pest::decide() {  // 0962
             else wander();
             break;
         case 2:
-            if (timerOn_ && !timerExpired_ && !interrupted_) continueTimedActivity();
-            else if (scripted_ && !scriptDone_ && !interrupted_) continueScript();
+            if (timerOn_ && !timerExpired_ && !interrupted_) {
+                continueTimedActivity();
+                // The original (0962 → 32f8) does nothing here for activities other than 1 and 3
+                // and spins forever — reachable by reopening the hatch (-153 forces mode 2) while
+                // the pest idles on a timer. Wander instead, as the branch's own fallback does.
+                if (state() == kStDecide && mode_ == 2) wander();
+            } else if (scripted_ && !scriptDone_ && !interrupted_) continueScript();
             else wander();
             break;
         case 3:
