@@ -39,7 +39,7 @@ void MegaphonePanel::onTextChar(wchar_t character) {
 
 void MegaphonePanel::drawOverlay(Surface& surface, const Palette& palette) const {
     name_.draw(surface, palette, position());
-    words_.draw(surface, palette, position());
+    words_.draw(surface, palette, position(), world_.caretVisible(this));
 }
 
 bool PhoneBubble::create(const Vec3& pos, bool facing) {  // 1010:4062

@@ -102,7 +102,7 @@ void Certificate::onTextChar(wchar_t character) {
 }
 
 void Certificate::drawOverlay(Surface& surface, const Palette& palette) const {
-    nameField_.draw(surface, palette, position());
+    nameField_.draw(surface, palette, position(), world_.caretVisible(this));
     dateField_.draw(surface, palette, position());
     timeField_.draw(surface, palette, position());
 }

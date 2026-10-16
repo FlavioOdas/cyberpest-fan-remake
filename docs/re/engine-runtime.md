@@ -162,3 +162,15 @@ So switching the light off puts the pest to bed and minimises the game; coming b
 the light on. Remake: `World::setActive` from WM_ACTIVATE (another process's window, or
 none, counts as another task); `--activate <ms>` simulates it in snapshots. Verified: light
 click → -115; with `--activate` → -108 again.
+
+## Input dispatch and text fields, checked 2026-10-17 (Claude)
+
+`1000:103c` (move), `1000:1206` (button down), `1000:135c` (up) and the per-tick hover in
+`1000:07c6` each reset the cursor to -59 (`1038:0886`), clear focus (`1038:0768`) and call
+the hook on every object front to back — as `World::broadcast` does. `1000:07c6` keeps the
+list in depth order with **one bubble pass per tick** (adjacent swaps), so a newly spawned
+front object climbs one place per tick; the remake sorts fully every tick (only a brief
+layering transient differs) [obs; deliberate difference]. Text fields are Win16 edit
+controls in the original; the remake draws them, scrolls single-line text to show its end
+(like ES_AUTOHSCROLL), and since 2026-10-17 draws a blinking caret (530 ms) in the focused
+field. Selection, caret movement and clipboard are not emulated.

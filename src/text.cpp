@@ -27,10 +27,10 @@ void TextField::configure(const adm::Node& module, int32_t rectId, int32_t fontI
     }
 }
 
-void TextField::draw(Surface& surface, const Palette& palette, const Vec3& origin) const {
+void TextField::draw(Surface& surface, const Palette& palette, const Vec3& origin, bool caret) const {
     if (!shown) return;
     surface.drawText(value, origin.x + left_, origin.y + top_, origin.x + right_, origin.y + bottom_,
-                     fontFace_, fontSize_, foreground_, background_, palette, autoFit, multiline);
+                     fontFace_, fontSize_, foreground_, background_, palette, autoFit, multiline, caret);
 }
 
 void TextField::type(wchar_t character) {

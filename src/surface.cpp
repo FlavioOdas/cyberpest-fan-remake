@@ -19,7 +19,7 @@ void Surface::fillRect(int left, int top, int right, int bottom, uint8_t index) 
 
 void Surface::drawText(const std::string& value, int left, int top, int right, int bottom,
                        const std::string& fontFace, int fontSize, Rgb foreground, Rgb background,
-                       const Palette& palette, bool autoFit, bool multiline) {
+                       const Palette& palette, bool autoFit, bool multiline, bool caret) {
     auto paletteIndex = [&](Rgb color) {
         int best = 0, bestDistance = INT_MAX;
         for (int index = 0; index < 256; ++index) {
@@ -37,7 +37,7 @@ void Surface::drawText(const std::string& value, int left, int top, int right, i
     };
     fillRect(left, top, right, bottom, paletteIndex(background));
     const int width = right - left, height = bottom - top;
-    if (value.empty() || width <= 0 || height <= 0) return;
+    if ((value.empty() && !caret) || width <= 0 || height <= 0) return;
 
     BITMAPINFO bitmap = {};
     bitmap.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -84,6 +84,15 @@ void Surface::drawText(const std::string& value, int left, int top, int right, i
     RECT bounds = {0, 0, width, height};
     DrawTextA(dc, value.data() + start, int(value.size() - start), &bounds,
               DT_LEFT | DT_TOP | DT_NOPREFIX | (multiline ? DT_WORDBREAK : DT_SINGLELINE));
+    if (caret && !multiline) {  // the edit control's caret after the last character
+        TEXTMETRICA metrics = {};
+        GetTextMetricsA(dc, &metrics);
+        extent = {};
+        if (start < value.size()) GetTextExtentPoint32A(dc, value.data() + start, int(value.size() - start), &extent);
+        const int x = std::min<int>(extent.cx, width - 2);
+        RECT bar = {x, 0, x + 2, std::min<int>(metrics.tmHeight, height)};
+        FillRect(dc, &bar, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+    }
     const uint8_t ink = paletteIndex(foreground);
     const auto* source = static_cast<const uint32_t*>(pixels);
     for (int y = std::max(0, top); y < std::min(height_, bottom); ++y) {

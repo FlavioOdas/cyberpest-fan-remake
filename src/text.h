@@ -11,7 +11,7 @@ class TextField {
 public:
     void configure(const adm::Node& module, int32_t rectId, int32_t fontId,
                    int32_t foregroundId, int32_t backgroundId);
-    void draw(Surface& surface, const Palette& palette, const Vec3& origin) const;
+    void draw(Surface& surface, const Palette& palette, const Vec3& origin, bool caret = false) const;
     void type(wchar_t character);
 
     std::string value;

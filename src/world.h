@@ -98,6 +98,8 @@ public:
     GameObject* focus() const { return focus_; }
     void takeFocus(GameObject* obj) { focus_ = obj; }
     void focusText(GameObject* obj) { textFocus_ = obj; }
+    // The focused text field shows a blinking caret (Windows' default blink, 530 ms).
+    bool caretVisible(const GameObject* obj) const { return textFocus_ == obj && now_ / 530 % 2 == 0; }
     void clearTextFocus(GameObject* obj) { if (textFocus_ == obj) textFocus_ = nullptr; }
     void setCursor(int32_t id) { cursor_ = id; }
     const Flc* image(const adm::FileRef& file);
