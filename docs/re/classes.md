@@ -41,6 +41,27 @@ Its second original child control and exact text-control styling/layout still ne
 an audit of `1010:0f6e`; treat this class as partial. [obs: first text source and hooks;
 inf: rendered control layout]
 
+## Phone and caller bubble (2026-10-16)
+
+Class -98's hover hook `1010:3f42` sends the hovered caller id -206..-210 to
+the phone avatar -99, or -205 for no caller. Class -188 loads its edit rectangle
+-218, font -54 and colors -55/-56 from module -188 (`1010:4062`), shows the
+control when its return state -108 reaches the last frame (`1010:4488`), and
+hides it on -4 (`1010:45f8`). Entering caller states -206..-210 asks the pest
+for text before returning to -108 through module commands. The remake draws
+wrapped GDI text into the indexed surface rather than creating a Win16 child
+edit control. [obs: original hooks and ADM state data; inf: wrapping behavior]
+
+`Pest::callerText` implements `1008:ca82`'s dispatch and the caller first-greeting
+flags. -206 Pesterminator (`1008:cd8e`) picks repeat tips from -273; -208
+Pestkeeper (`1008:d3e8`) chooses -272/-273 from the room-mess predicate;
+-210 Pestrologer (`1008:dd66`) selects the birth-hour row, greeting first,
+then predictions at list indices 1 onward. The -207 TheraPest and -209 Vet
+repeat-call branches are **partial [inf]**: immediate physical illness referral
+and simple Vet symptom choice work, but the original's personality, mood,
+behavior-specific and random branches are not yet ported. [obs: Ghidra code,
+modules -206..-210; inf: partial branch implementations]
+
 | class | size | ctor | vtable | overridden slots (offset=function) |
 |---|---|---|---|---|
 | -593 | 0x15e | 1038:3308 | 1038:3e9a | +0x04=1038:4890 +0x14=1010:47c6 +0x34=1010:513a +0x44=1010:502a +0x68=1010:50e8 |

@@ -25,7 +25,7 @@ public:
     void fillRect(int left, int top, int right, int bottom, uint8_t index);
     void drawText(const std::string& value, int left, int top, int right, int bottom,
                   const std::string& fontFace, int fontSize, Rgb foreground, Rgb background,
-                  const Palette& palette, bool autoFit = false);
+                  const Palette& palette, bool autoFit = false, bool multiline = false);
 
 private:
     int width_, height_;

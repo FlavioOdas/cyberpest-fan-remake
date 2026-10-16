@@ -14,6 +14,7 @@ add_executable(cyberpest WIN32
     src/items.cpp
     src/text.cpp
     src/pest.cpp
+    src/pest_phone.cpp
     src/adm.cpp
     src/flc.cpp
     src/surface.cpp

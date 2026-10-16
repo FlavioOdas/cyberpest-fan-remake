@@ -23,6 +23,10 @@ std::unique_ptr<GameObject> createObjectForClass(int32_t classSymbol, World& wor
         return std::make_unique<ShelfWrapperItem>(world, moduleId, module);
     case -189:
         return std::make_unique<MegaphonePanel>(world, moduleId, module);
+    case -188:
+        return std::make_unique<PhoneBubble>(world, moduleId, module);
+    case -98:
+        return std::make_unique<Phone>(world, moduleId, module);
     default:
         // Not yet ported classes behave as the generic object (-107) for now.
         return std::make_unique<GameObject>(world, moduleId, module);

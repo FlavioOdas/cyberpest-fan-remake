@@ -18,3 +18,24 @@ public:
 private:
     TextField words_;
 };
+
+class PhoneBubble final : public GameObject {
+public:
+    using GameObject::GameObject;
+
+    bool create(const Vec3& pos, bool facing) override;
+    void onStateStart() override;
+    void onLastFrame(Sprite& sprite) override;
+    void drawOverlay(Surface& surface, const Palette& palette) const override;
+
+private:
+    TextField message_;
+};
+
+class Phone final : public GameObject {
+public:
+    using GameObject::GameObject;
+
+    bool create(const Vec3& pos, bool facing) override;
+    void onEvent(GameObject* from, int32_t value, int type) override;
+};

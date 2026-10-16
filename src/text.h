@@ -17,6 +17,7 @@ public:
     std::string value;
     bool shown = false;
     bool autoFit = false;
+    bool multiline = false;
     size_t maxLength = 400;
 
 private:

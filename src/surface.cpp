@@ -19,7 +19,7 @@ void Surface::fillRect(int left, int top, int right, int bottom, uint8_t index) 
 
 void Surface::drawText(const std::string& value, int left, int top, int right, int bottom,
                        const std::string& fontFace, int fontSize, Rgb foreground, Rgb background,
-                       const Palette& palette, bool autoFit) {
+                       const Palette& palette, bool autoFit, bool multiline) {
     auto paletteIndex = [&](Rgb color) {
         int best = 0, bestDistance = INT_MAX;
         for (int index = 0; index < 256; ++index) {
@@ -67,7 +67,7 @@ void Surface::drawText(const std::string& value, int left, int top, int right, i
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, RGB(0, 0, 0));
     SIZE extent = {};
-    if (autoFit && font) {
+    if (autoFit && font && !multiline) {
         while (fontSize > 8 &&
                GetTextExtentPoint32A(dc, value.data(), int(value.size()), &extent) && extent.cx > width) {
             SelectObject(dc, oldFont);
@@ -78,12 +78,12 @@ void Surface::drawText(const std::string& value, int left, int top, int right, i
         }
     }
     size_t start = 0;
-    while (start + 1 < value.size() &&
+    while (!multiline && start + 1 < value.size() &&
            GetTextExtentPoint32A(dc, value.data() + start, int(value.size() - start), &extent) &&
            extent.cx > width) ++start;
     RECT bounds = {0, 0, width, height};
     DrawTextA(dc, value.data() + start, int(value.size() - start), &bounds,
-              DT_LEFT | DT_TOP | DT_NOPREFIX | DT_SINGLELINE);
+              DT_LEFT | DT_TOP | DT_NOPREFIX | (multiline ? DT_WORDBREAK : DT_SINGLELINE));
     const uint8_t ink = paletteIndex(foreground);
     const auto* source = static_cast<const uint32_t*>(pixels);
     for (int y = std::max(0, top); y < std::min(height_, bottom); ++y) {

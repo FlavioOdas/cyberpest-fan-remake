@@ -26,6 +26,7 @@ public:
     const std::string& name() const { return name_; }
     long birthTime() const { return birthTime_; }
     void setName(const std::string& name);  // 1038:6f06
+    std::string callerText(int32_t caller);  // 1008:ca82
     void setAdvanceTime(bool on) { advanceTime_ = on; }  // [Cheats] AdvanceTime (f_198)
 
 private:

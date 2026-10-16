@@ -506,3 +506,14 @@
 1038:9914	vfn_1038_9914	vtable/callback target (auto)
 1000:781e	Object_HeightAboveFloor	(floorMinY - y) + z - 3000
 1008:8a3e	pest_8a3e	direct call target missed by Ghidra
+1008:ca82	Pest_CallerText	dispatch phone caller by module id
+1008:cd8e	Pest_PesterminatorText	first greeting then random tips
+1008:ced0	Pest_TheraPestText	mood and personality advice (port partial)
+1008:d3e8	Pest_PestkeeperText	mess predicate selects advice pool
+1008:d6a4	Pest_VetText	medical advice (port partial)
+1008:dd66	Pest_PestrologerText	birth-hour row greeting and predictions
+1010:3efa	Phone_Create	phone object create hook
+1010:3f42	Phone_OnEvent	forward hovered caller to phone avatar
+1010:4062	PhoneBubble_Create	load bubble edit control data
+1010:4488	PhoneBubble_OnLastFrame	show phone text
+1010:45f8	PhoneBubble_OnStateStart	request caller text or hide control

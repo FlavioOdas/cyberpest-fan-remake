@@ -84,3 +84,9 @@ the live window use the same pixels. `World::inputChar` forwards `WM_CHAR` to th
 active object. The visible output and typed-word path are verified, but caret,
 selection, clipboard and original control styles are not yet replicated. [obs:
 original control calls and module data; inf: equivalent overlay implementation]
+
+Phone bubble -188 uses the same overlay, with `DT_WORDBREAK` to fit long caller
+messages into its -218 rectangle. A first-call Pesterminator greeting, repeat
+tip, and Pestrologer birth-hour greeting were verified in headless snapshots.
+Original Win16 edit-control line wrapping and scrolling are not yet matched.
+[obs: original rectangle/font/color lists; inf: overlay rendering]

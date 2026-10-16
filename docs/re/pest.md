@@ -53,7 +53,9 @@ s), `f_128/12a/12c`=-415 5,10,20, `f_12e/130`=-416 25,75 (stomach bands), `f_132
   value -378 = 20); reward moves the last choice (`f_288`) one place forward, punishment back.
 - Body/mind: `f_28a` good stomach, `f_28c` junk stomach, `f_28e` bowels, `f_290` mood (−100..100),
   `f_292` fleas, `f_294` rabies, `f_296` on heat, `f_298` (set by snacks/shocks),
-  `f_29a..f_2a2` saved, meaning TBD. Predicates: starving `f_28a<1`; needs toilet `f_28e>99`;
+  `f_29a..f_2a2` saved caller-first-greeting flags: -206 Pesterminator, -208 Pestkeeper,
+  -209 Vet, -207 TheraPest, -210 Pestrologer, in that field order (`1008:cd8e/d3e8/d6a4/ced0/dd66`).
+  Predicates: starving `f_28a<1`; needs toilet `f_28e>99`;
   junk-sick `f_28c>f_134`; depressed −100..−50; suicidal `<−99`; happy 50..99; over-excited `>99`.
 - Owned objects: `f_138` array of `f_13c` module ids (from -337), re-spawned on load (`c1fc`).
 
