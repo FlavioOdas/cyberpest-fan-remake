@@ -36,6 +36,8 @@ public:
     bool load(const std::wstring& path, std::string* error);
 
     const std::vector<Node>& roots() const { return roots_; }
+    // Top-level module with this id (modules are the ADDM chunks at the root of the file).
+    const Node* findModule(int32_t id) const;
     // First virtual file with this name (names are case-sensitive, upper case in the data).
     const FileRef* findFile(std::string_view name) const;
     std::span<const uint8_t> bytes(const FileRef& file) const;
@@ -47,6 +49,13 @@ private:
     std::vector<uint8_t> data_;
     std::vector<Node> roots_;
     std::unordered_map<std::string, FileRef> files_;
+    std::unordered_map<int32_t, const Node*> modules_;
 };
+
+// Helpers for walking modules. A module's children are lists (`Tag::List`, whose `ref` is the
+// command symbol inside states) and sub-modules (`Tag::Map`, e.g. states with ref -109).
+const Node* childModule(const Node& module, int32_t id);
+std::vector<int32_t> intValues(const Node& list);
+const FileRef* fileValue(const Node& list, size_t index = 0);
 
 }  // namespace adm

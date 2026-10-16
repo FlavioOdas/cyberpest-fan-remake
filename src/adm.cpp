@@ -46,7 +46,38 @@ bool Database::load(const std::wstring& path, std::string* error) {
     }
     files_.clear();
     indexFiles(roots_);
+    modules_.clear();
+    for (const Node& n : roots_) {
+        if (n.tag == Tag::Map) modules_.try_emplace(n.id, &n);
+    }
     return true;
+}
+
+const Node* Database::findModule(int32_t id) const {
+    auto it = modules_.find(id);
+    return it == modules_.end() ? nullptr : it->second;
+}
+
+const Node* childModule(const Node& module, int32_t id) {
+    for (const Node& c : module.children) {
+        if (c.tag == Tag::Map && c.id == id) return &c;
+    }
+    return nullptr;
+}
+
+std::vector<int32_t> intValues(const Node& list) {
+    std::vector<int32_t> out;
+    for (const Node& c : list.children) {
+        if (c.tag == Tag::Int) out.push_back(c.intValue);
+    }
+    return out;
+}
+
+const FileRef* fileValue(const Node& list, size_t index) {
+    for (const Node& c : list.children) {
+        if (c.tag == Tag::FileEntry && index-- == 0) return &c.file;
+    }
+    return nullptr;
 }
 
 bool Database::parse(uint32_t o, uint32_t end, std::vector<Node>& out, int depth) {

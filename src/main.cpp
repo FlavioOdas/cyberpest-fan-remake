@@ -1,7 +1,6 @@
-// CyberPest remake — M3 engine skeleton: load the user's PEST.ADM, draw the room and play one
-// pest animation with its sound. Options:
+// CyberPest remake. Loads the user's original PEST.ADM and runs the room defined in it.
+// Options:
 //   --adm <path>        PEST.ADM to load (default: next to the exe, then the current folder)
-//   --anim <NAME>       animation to loop (default PBEAT -> PBEAT.FLC + PBEAT.WAV)
 //   --snapshot <bmp>    render the first frame to an 8-bit BMP and exit (no window, no sound)
 #include <windows.h>
 #include <shellapi.h>
@@ -13,28 +12,20 @@
 #include "adm.h"
 #include "audio.h"
 #include "flc.h"
+#include "scene.h"
 #include "surface.h"
+#include "symbols.h"
 #include "wav.h"
 
 namespace {
 
 constexpr int kWidth = 640, kHeight = 480;
 
-struct Sprite {
-    Flc flc;
-    int x = 0, y = 0;
-    int frame = 0;
-    DWORD nextFrameAt = 0;
-};
-
 struct App {
     adm::Database db;
     Palette palette{};
     Surface screen{kWidth, kHeight};
-    Flc background, foreground;
-    Sprite pest;
-    Sound pestSound;
-    bool hasSound = false;
+    Scene scene;
     Mixer mixer;
     std::wstring error;
 } app;
@@ -48,16 +39,7 @@ std::wstring exeDirectory() {
     return dir.substr(0, dir.find_last_of(L"\\/") + 1);
 }
 
-bool loadFlc(const std::string& name, Flc* flc) {
-    const adm::FileRef* file = app.db.findFile(name);
-    if (!file || !flc->open(app.db.bytes(*file)) || !flc->decodeAll()) {
-        app.error = L"Can't load " + widen(name) + L" from PEST.ADM.";
-        return false;
-    }
-    return true;
-}
-
-bool loadGame(const std::wstring& admPath, const std::string& anim) {
+bool loadGame(const std::wstring& admPath) {
     std::string err;
     if (!app.db.load(admPath, &err)) {
         app.error = L"Can't load CyberPest data (" + admPath + L"): " + widen(err) +
@@ -69,34 +51,19 @@ bool loadGame(const std::wstring& admPath, const std::string& anim) {
         app.error = L"PALETTE.BMP missing from PEST.ADM.";
         return false;
     }
-    if (!loadFlc("BACKGRND.FLC", &app.background) || !loadFlc("FOREGRND.FLC", &app.foreground) ||
-        !loadFlc(anim + ".FLC", &app.pest.flc)) {
+    if (!app.scene.loadRoom(app.db, sym::RoomScreen, &err)) {
+        app.error = L"Can't build the room: " + widen(err);
         return false;
-    }
-    // Placement is a stand-in until the scene layout from the ADM modules is decoded (M4).
-    app.pest.x = (kWidth - app.pest.flc.width()) / 2;
-    app.pest.y = kHeight - app.foreground.height() - app.pest.flc.height() + 40;
-    if (const adm::FileRef* wav = app.db.findFile(anim + ".WAV")) {
-        app.hasSound = loadWav(app.db.bytes(*wav), &app.pestSound);
     }
     return true;
 }
 
 void compose() {
-    app.screen.blit(app.background.frames()[0].data(), app.background.width(), app.background.height(), 0, 0, -1);
-    const Flc& p = app.pest.flc;
-    app.screen.blit(p.frames()[app.pest.frame].data(), p.width(), p.height(), app.pest.x, app.pest.y);
-    app.screen.blit(app.foreground.frames()[0].data(), app.foreground.width(), app.foreground.height(), 0,
-                    kHeight - app.foreground.height());
+    app.screen.fill(0);
+    app.scene.draw(app.screen);
 }
 
-void tick(DWORD now) {
-    Sprite& s = app.pest;
-    if (now < s.nextFrameAt) return;
-    s.nextFrameAt = now + std::max(s.flc.frameDelayMs(), 20);
-    if (s.frame == 0 && app.hasSound) app.mixer.play(0, &app.pestSound);
-    s.frame = (s.frame + 1) % s.flc.frameCount();
-}
+void tick(DWORD) {}
 
 void present(HWND hwnd, HDC dc) {
     struct {
@@ -182,19 +149,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     int argc = 0;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     std::wstring admPath, snapshot;
-    std::string anim = "PBEAT";
     for (int i = 1; i + 1 < argc; i += 2) {
         const std::wstring key = argv[i], value = argv[i + 1];
         if (key == L"--adm") admPath = value;
         else if (key == L"--snapshot") snapshot = value;
-        else if (key == L"--anim") anim.assign(value.begin(), value.end());
     }
     LocalFree(argv);
     if (admPath.empty()) {
         admPath = exeDirectory() + L"PEST.ADM";
         if (GetFileAttributesW(admPath.c_str()) == INVALID_FILE_ATTRIBUTES) admPath = L"PEST.ADM";
     }
-    if (!loadGame(admPath, anim)) {
+    if (!loadGame(admPath)) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);
         return 1;
     }
