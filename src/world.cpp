@@ -72,6 +72,13 @@ int World::count(int32_t id) const {
     return n;
 }
 
+bool World::anyOtherWithProperty(const GameObject* object, int32_t property) const {
+    for (const auto& other : objects_) {
+        if (other.get() != object && other->property(property)) return true;
+    }
+    return false;
+}
+
 void World::remove(GameObject* obj) {
     for (auto it = objects_.begin(); it != objects_.end(); ++it) {
         if (it->get() == obj) {

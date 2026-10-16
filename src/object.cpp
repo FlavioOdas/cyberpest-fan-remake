@@ -296,7 +296,10 @@ void GameObject::setProperty(int32_t symbol, int32_t value) {  // 1000:63ee
     case kPropFallsWhenReleased: fallsWhenReleased_ = value != 0; break;
     case kPropHeld:
         held_ = value != 0;
-        if (held_) grabOffset_ = {world_.mouse().x - pos_.x, world_.mouse().y - pos_.y};  // +0x62
+        if (held_) {
+            dragOrigin_ = pos_;
+            grabOffset_ = {world_.mouse().x - pos_.x, world_.mouse().y - pos_.y};  // +0x62
+        }
         break;
     case kPropNoFloorClamp: noFloorClamp_ = value != 0; break;
     case kPropPickable: flagB6_ = value != 0; break;

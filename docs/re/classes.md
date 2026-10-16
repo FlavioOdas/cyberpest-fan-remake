@@ -2,6 +2,24 @@
 
 Base: CLASS_OBJECT -107, vtable `1038:40de`. Overridden slots must be ported per class.
 
+## Shelf item family (ported 2026-10-16)
+
+`src/items.*` implements the shared vtable of -274/-558, the carrying variant
+-337/-587, and wrapper -129. `1008:6ee6` loads the shelf rectangles from child module
+-275, timer interval from -276 and maximum floor height from -277. `1008:70d4` sends
+-16 to the pest on landing, -15 when a timed or shelf-positioned item is ready, and
+-14 before removal. Releasing within a shelf rectangle snaps y to its bottom minus one,
+z to 3000, and sets property -82. The -308 event starts a randomized -17 timer, checked
+by `1008:746e` at each animation cycle's last frame (`1008:73d4`). [obs: original code,
+module -81 data]
+
+The -337/-587 variant reads its home from -524, optionally randomizing x from -526,
+and switches between the tray-sized state -523 and room-sized state -108 when dragged
+across the floor edge (`1008:7f16/819a/805a`). The drag origin at object +0x58 is
+distinct from the actual position +0xa8; the remake now tracks both. Wrapper -129
+removes itself on entering -559 if another room object has property -558
+(`1010:2c1c`). [obs: original code, modules -102/-129/-338]
+
 | class | size | ctor | vtable | overridden slots (offset=function) |
 |---|---|---|---|---|
 | -593 | 0x15e | 1038:3308 | 1038:3e9a | +0x04=1038:4890 +0x14=1010:47c6 +0x34=1010:513a +0x44=1010:502a +0x68=1010:50e8 |

@@ -1,5 +1,6 @@
 #include "classes.h"
 
+#include "items.h"
 #include "pest.h"
 #include "world.h"
 
@@ -33,6 +34,14 @@ std::unique_ptr<GameObject> createObjectForClass(int32_t classSymbol, World& wor
         return std::make_unique<Certificate>(world, moduleId, module);
     case -105:
         return std::make_unique<Pest>(world, moduleId, module);
+    case -274:
+    case -558:
+        return std::make_unique<ShelfItem>(world, moduleId, module);
+    case -337:
+    case -587:
+        return std::make_unique<ShelfCarryItem>(world, moduleId, module);
+    case -129:
+        return std::make_unique<ShelfWrapperItem>(world, moduleId, module);
     default:
         // Not yet ported classes behave as the generic object (-107) for now.
         return std::make_unique<GameObject>(world, moduleId, module);

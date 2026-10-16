@@ -4,6 +4,7 @@
 //   --snapshot <bmp>    render a frame to an 8-bit BMP and exit (no window, no sound)
 //   --time <ms>         with --snapshot: simulated time before the frame is taken
 //   --click <x,y,ms>    with --snapshot: simulated left click (640x480 coordinates); repeatable
+//   --drag <x1,y1,x2,y2,ms>  with --snapshot: hold and move over 400 ms; repeatable
 //   --dump              with --snapshot: print every object's state to stdout
 #include <windows.h>
 #include <shellapi.h>
@@ -229,8 +230,17 @@ struct Click {
     DWORD at;
 };
 
-int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> clicks, bool dump) {
+struct Drag {
+    int fromX, fromY, toX, toY;
+    DWORD at;
+    bool started = false;
+    bool finished = false;
+};
+
+int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> clicks,
+                std::vector<Drag> drags, bool dump) {
     std::sort(clicks.begin(), clicks.end(), [](const Click& a, const Click& b) { return a.at < b.at; });
+    std::sort(drags.begin(), drags.end(), [](const Drag& a, const Drag& b) { return a.at < b.at; });
     size_t next = 0;
     for (DWORD t = 0; t <= duration; t += 10) {
         app.world.tick(t);
@@ -238,6 +248,18 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
             app.world.mouseMove(clicks[next].x, clicks[next].y);
             app.world.buttonDown(clicks[next].x, clicks[next].y);
             app.world.buttonUp(clicks[next].x, clicks[next].y);
+        }
+        for (Drag& drag : drags) {
+            if (!drag.started && drag.at <= t) {
+                app.world.mouseMove(drag.fromX, drag.fromY);
+                app.world.buttonDown(drag.fromX, drag.fromY);
+                drag.started = true;
+            }
+            if (drag.started && !drag.finished && drag.at + 400 <= t) {
+                app.world.mouseMove(drag.toX, drag.toY);
+                app.world.buttonUp(drag.toX, drag.toY);
+                drag.finished = true;
+            }
         }
     }
     compose(duration);
@@ -254,6 +276,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     std::wstring admPath, snapshot;
     DWORD duration = 0;
     std::vector<Click> clicks;
+    std::vector<Drag> drags;
     bool dump = false;
     for (int i = 1; i < argc; ++i) {
         const std::wstring key = argv[i];
@@ -269,6 +292,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         else if (key == L"--click") {
             Click c{};
             if (swscanf(value.c_str(), L"%d,%d,%lu", &c.x, &c.y, &c.at) == 3) clicks.push_back(c);
+        } else if (key == L"--drag") {
+            Drag drag{};
+            if (swscanf(value.c_str(), L"%d,%d,%d,%d,%lu", &drag.fromX, &drag.fromY,
+                        &drag.toX, &drag.toY, &drag.at) == 5) drags.push_back(drag);
         }
     }
     LocalFree(argv);
@@ -280,6 +307,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (snapshot.empty()) MessageBoxW(nullptr, app.error.c_str(), L"CyberPest", MB_ICONERROR);
         return 1;
     }
-    if (!snapshot.empty()) return runSnapshot(snapshot, duration, std::move(clicks), dump);
+    if (!snapshot.empty()) return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), dump);
     return runWindow(instance);
 }

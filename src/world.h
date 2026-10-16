@@ -49,6 +49,7 @@ public:
     // Services for objects.
     GameObject* find(int32_t id) const;
     int count(int32_t id) const;                       // 1000:0cdc
+    bool anyOtherWithProperty(const GameObject* object, int32_t property) const;
     void requestAttention() {                          // 1000:47f6: pop up over other apps
         if (attention_) attention_();
     }

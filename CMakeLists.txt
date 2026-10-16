@@ -9,6 +9,7 @@ add_executable(cyberpest WIN32
     src/world.cpp
     src/object.cpp
     src/classes.cpp
+    src/items.cpp
     src/pest.cpp
     src/adm.cpp
     src/flc.cpp

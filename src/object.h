@@ -183,6 +183,7 @@ protected:
     bool fallsWhenReleased_ = false;  // +0xb8 (-279)
     bool flagBA_ = false;     // +0xba (-122)
     Point2 grabOffset_;       // +0x62
+    Vec3 dragOrigin_;         // +0x58, position saved when picked up
     GameObject* parent_ = nullptr;  // +0xbc
     bool attached_ = false;   // +0xc0
     bool walking_ = false;    // +0x76

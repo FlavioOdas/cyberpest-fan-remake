@@ -39,6 +39,15 @@
 1008:583c	Pest_vt44
 1008:5b54	Pest_OnEvent	pest vtbl+0x68
 1008:69b2	Pest_OnFrame	pest vtbl+0x4c
+1008:6ee6	ShelfItem_Create	load shelf rectangles and timer range from module
+1008:70d4	ShelfItem_OnEvent	landing, shelf snap, timer, and pest notifications
+1008:735e	ShelfItem_StartTimer	property -17 and randomized duration
+1008:73d4	ShelfItem_ExpireTimer	clear property -17 when timer expires
+1008:746e	ShelfItem_OnLastFrame	expire timer and notify pest -15
+1008:74d0	ShelfItem_OnFrame	clear shelf flag -82 while held
+1008:7f16	ShelfCarryItem_Create	place carry item at module -524 home
+1008:805a	ShelfCarryItem_OnEvent	home reset and pest position handling
+1008:819a	ShelfCarryItem_OnMouseMove	large/small state transition across floor edge
 1008:8a3e	Pest_Init	body defaults and saved/newborn state
 1008:8d28	Pest_Birth	birth time and birth hour
 1008:8dca	Pest_SetBirthHour	personality and preference lists
@@ -59,6 +68,7 @@
 1010:1930	vfn_1010_1930	vtable/callback target (auto)
 1010:19e0	vfn_1010_19e0	vtable/callback target (auto)
 1010:1c47	vfn_1010_1c47	vtable/callback target (auto)
+1010:2c1c	ShelfWrapperItem_OnStateStart	remove wrapper when another object has property -558
 1010:2cf2	vfn_1010_2cf2	vtable/callback target (auto)
 1010:33e6	vfn_1010_33e6	vtable/callback target (auto)
 1010:3400	vfn_1010_3400	vtable/callback target (auto)
