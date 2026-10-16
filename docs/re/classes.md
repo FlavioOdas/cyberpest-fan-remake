@@ -56,11 +56,29 @@ edit control. [obs: original hooks and ADM state data; inf: wrapping behavior]
 flags. -206 Pesterminator (`1008:cd8e`) picks repeat tips from -273; -208
 Pestkeeper (`1008:d3e8`) chooses -272/-273 from the room-mess predicate;
 -210 Pestrologer (`1008:dd66`) selects the birth-hour row, greeting first,
-then predictions at list indices 1 onward. The -207 TheraPest and -209 Vet
-repeat-call branches are **partial [inf]**: immediate physical illness referral
-and simple Vet symptom choice work, but the original's personality, mood,
-behavior-specific and random branches are not yet ported. [obs: Ghidra code,
-modules -206..-210; inf: partial branch implementations]
+then predictions at list indices 1 onward. [obs: Ghidra code, modules -206..-210]
+
+**TheraPest -207 (`1008:ced0`, ported 2026-10-17, Claude).** After the greeting:
+ill → list -209 (refer to the Vet). Else child -220: suicidal -267, depressed -268,
+over-excited (mood > 99) -270, happy (50..99) -269. Else if the treated flag
+(f_298, set by snacks/shocks) is set, clear it and pick a random string from child
+-229. Otherwise loop on Random(0,2) until a non-empty string: 0 → child -271 list
+number `(band(E)*3 + band(N))*3 + moodBand` where band = <2000:0, ≤8000:1, else 2
+(personality y = extroversion, x = neuroticism) and moodBand = mood < -20:0,
+≤20:1, else 2 (27 lists, 12–14 empty); 1 → child -238 list named by the top
+activity symbol; 2 → child -252 list named by the top reaction symbol.
+
+**Vet -209 (`1008:d6a4`, ported 2026-10-17, Claude).** After the greeting, child
+-220 by priority: pest state -226 → -226, state -227 → -227, rabid -222, fleas -221,
+starving -224, needs toilet -228, junk-sick -223, on heat -225. Then mood extreme →
+list -207 (refer to the TheraPest); treated flag → clear, random string of child
+-229; diet child -230: bowels ≥ 80 -231, junk ≥ 80 -234, good ≥ 80 -235, good+junk
+≥ 80 -232, good+junk < 11 -233, good < 11 -237, junk < 11 and good < 81 -236.
+Otherwise Random(0,1) ≠ 0 tries child -238 [top activity], then child -252 [top
+reaction], then the greeting list -219. [obs: decompile plus asm push order of the
+0x7fff-terminated path arguments; verified by snapshot: a second Vet call on a
+newborn printed the -236 "very low on junk food" text, a second TheraPest call
+printed reaction list -255 of child -252]
 
 ## Wall clock (2026-10-16)
 
