@@ -20,3 +20,16 @@
   CD-ROM messages (likely generic engine code; all data is installed to disk).
 - Resources: 13 cursors (+groups), 2 icons, 1 bitmap (30989), 1 menu, 4 dialogs
   (100, 103, 106, 30721), 18 string tables, accelerators, version.
+
+## Resources (`tools/ne_resources.py`)
+
+- String table ids: 2 doc template, 3 `CyberPest`, 4 `PEST.INI`, 5 `PEST.ADI`, 6 "Can't load
+  module.", 7 "Can't activate screen.", 8–9 ADM error prefix/"Abort now?", 10–11 CD-ROM errors,
+  12–13 out of memory, 14 video (VfW) error, 15 audio error, 16 files not found,
+  17–19 `PestGetTextColour` / `PestGetBackColour` / `PestGetBackBrush` (registered window
+  messages, inferred), 20 "Bad data file version!", 21 `INSTALL.INI`, 22 data load failure,
+  23 `PEST.CFG`, 24 `PEST.TMP`. Ids ≥ 50000 are MFC's standard strings.
+- Menu 2: standard MFC File/Edit/Help (probably unused/hidden in the shipped UI — verify).
+- Dialog 100 About ("Copyright © EMG 1996"); 103 "Where shall we go now?" (developer screen
+  jump, edit box id 1000); 106 "Pest Personality" (cheat: Neuroticism/Extroversion scrollbars
+  1001/1002, value labels 1003/1004); 30721 MFC "New" document dialog.

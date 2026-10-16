@@ -178,10 +178,10 @@ def main(exe, out):
                 m = re.match(r"call\s+0x([0-9a-f]+)$", text)
                 if m:
                     calls[fn][label(seg.number, int(m.group(1), 16))] += 1
-                for imm in re.findall(r"0x([0-9a-f]{3,4})\b", text):
-                    v = int(imm, 16)
-                    if v in strs and not text.startswith(("call", "j", "lcall")):
-                        notes.append(repr(strs[v][:60]))
+                # Only plain immediates (push imm / mov reg,imm), never memory operands.
+                m = re.match(r"(?:push\s+|mov\s+(?:ax|bx|cx|dx|si|di),)0x([0-9a-f]{3,4})$", text)
+                if m and int(m.group(1), 16) in strs:
+                    notes.append(repr(strs[int(m.group(1), 16)][:60]))
                 lines.append(f"  {addr:04x}  {text}" + (f"    ; {'; '.join(notes)}" if notes else ""))
         with open(os.path.join(out, f"seg{seg.number}.asm"), "w") as f:
             f.write("\n".join(lines) + "\n")
