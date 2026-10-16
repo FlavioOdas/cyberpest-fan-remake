@@ -19,8 +19,8 @@
 struct GameConfig {  // config module -42 (App_LoadConfig 1000:3584)
     int floorMaxY = 359;  // -44 (theApp+0x6ce)
     int floorMinY = 224;  // -45 (theApp+0x6d0)
-    int config46 = 50;    // -46 (theApp+0x6d2) [meaning ?]
-    int gravity = 40;     // -47 (theApp+0x6d4), multiplied by frameScale [inf]
+    int config46 = 50;    // -46 (theApp+0x6d2): falls shorter than this land softly (1000:6c92)
+    int gravity = 40;     // -47 (theApp+0x6d4): fall step per frame = gravity * frameScale (1000:6c92)
     int frameScale = 1;   // -49 (theApp+0x6d6): 1 high spec, 2 low spec
 };
 
@@ -81,6 +81,14 @@ public:
     const adm::Database& db() const { return *db_; }
     const GameConfig& config() const { return config_; }
     const Cheats& cheats() const { return cheats_; }
+
+    // Window activation (OnActivate 1000:2192 → 1000:4abc). Idle time counts only while the
+    // game window is inactive or minimised; while it is active the player counts as present
+    // (1038:6112). Coming back from another application sends -120 to the room background
+    // -70 (which turns the light back on).
+    void setActive(bool active, bool fromOtherApp, long now);
+    long idleSince(long now) const { return active_ ? now : inactiveSince_; }  // 1038:6112
+    void resetIdle(long now) { inactiveSince_ = now; }                         // 1038:1da0
     void setCheats(const Cheats& c) { cheats_ = c; }
     uint32_t now() const { return now_; }
     GameObject* focus() const { return focus_; }
@@ -104,6 +112,8 @@ private:
     const adm::Database* db_ = nullptr;
     GameConfig config_;
     Cheats cheats_;
+    bool active_ = true;       // theApp+0x1d6
+    long inactiveSince_ = 0;   // theApp+0x1d8
     std::vector<std::unique_ptr<GameObject>> objects_;  // front (highest z) first
     std::vector<std::unique_ptr<GameObject>> removed_;
     std::unordered_map<uint32_t, std::unique_ptr<Flc>> images_;

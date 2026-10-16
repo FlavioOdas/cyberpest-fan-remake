@@ -145,3 +145,20 @@ applied; CCPOINT2 is a cursor. So with this data there is no visible palette ani
 the remake keeps one palette from PALETTE.BMP and ignores FLC palettes. [inf: that the
 placeholder palettes are never applied in the original, from the visual result; the
 exact meaning of the +0x2a/+0x2c flags was not decoded]
+
+## Window activation, idle time and the light (2026-10-17, Claude)
+
+The frame's OnActivate (`1000:2192`, nState/pWndOther/bMinimized) calls `1000:4abc(theApp,
+active = nState != WA_INACTIVE && !minimized)`: on active→inactive it stores the time in
+theApp+0x1d8 (`1038:1da0`); +0x1d6 holds the flag. `1038:6112` returns "now" while active,
+else +0x1d8, so the pest's boredom check `1008:e17e` (idle minutes > 120 − extroversion/100
+capped at 100 → pop-up -600, then `1038:1da0` resets the clock) only counts time spent away
+from the game. When the window becomes active from another task (pWndOther NULL, not
+minimised) the room background -70 gets message -120. [obs]
+
+Data: background -70 state -108 has hit area -113 (the light switch, 18..47 × 60..92) →
+state -115 DARKROOM.FLC, which sends -118 to the app (minimise) and returns to -108 on -120.
+So switching the light off puts the pest to bed and minimises the game; coming back turns
+the light on. Remake: `World::setActive` from WM_ACTIVATE (another process's window, or
+none, counts as another task); `--activate <ms>` simulates it in snapshots. Verified: light
+click → -115; with `--activate` → -108 again.

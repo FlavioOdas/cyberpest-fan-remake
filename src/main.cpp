@@ -8,6 +8,7 @@
 //   --type <text,ms>   with --snapshot: type into the active text field; repeatable
 //   --dump              with --snapshot: print every object's state to stdout
 //   --popup <reason>    with --snapshot: draw the attention pop-up (e.g. -601) instead (24-bit BMP)
+//   --activate <ms>     with --snapshot: the window is re-activated from another application
 //   --startup on|off    add or remove the "run when Windows starts" entry, then exit
 //   --import <file>     copy PEST.ADM, or extract it from the original installer's DATA.Z,
 //                       to --out (default %APPDATA%\CyberPest\PEST.ADM), then exit
@@ -381,6 +382,15 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         app.world.buttonUp(p.x, p.y);
         return 0;
     }
+    case WM_ACTIVATE: {  // OnActivate 1000:2192
+        const bool active = LOWORD(wp) != WA_INACTIVE && !HIWORD(wp);
+        // Win16 passed no other window when it belonged to another task.
+        DWORD otherProcess = 0;
+        if (lp) GetWindowThreadProcessId(reinterpret_cast<HWND>(lp), &otherProcess);
+        const bool fromOtherApp = !lp || otherProcess != GetCurrentProcessId();
+        app.world.setActive(active, active && fromOtherApp, long(std::time(nullptr)));
+        break;
+    }
     case WM_SYSCOMMAND:
         if ((wp & 0xFFF0) == kSysRunAtStartup) {
             setRunAtStartup(!runsAtStartup());
@@ -485,7 +495,7 @@ struct TypedText {
 };
 
 int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> clicks,
-                std::vector<Drag> drags, std::vector<TypedText> typed, bool dump) {
+                std::vector<Drag> drags, std::vector<TypedText> typed, bool dump, DWORD activateAt) {
     std::sort(clicks.begin(), clicks.end(), [](const Click& a, const Click& b) { return a.at < b.at; });
     std::sort(drags.begin(), drags.end(), [](const Drag& a, const Drag& b) { return a.at < b.at; });
     std::sort(typed.begin(), typed.end(), [](const TypedText& a, const TypedText& b) { return a.at < b.at; });
@@ -513,6 +523,10 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
         for (; nextText < typed.size() && typed[nextText].at <= t; ++nextText) {
             for (wchar_t character : typed[nextText].value) app.world.inputChar(character);
         }
+        if (activateAt && t == activateAt / 10 * 10) {  // back from another application
+            app.world.setActive(false, false, long(std::time(nullptr)));
+            app.world.setActive(true, true, long(std::time(nullptr)));
+        }
     }
     compose(duration);
     if (dump) std::fputs(app.world.describe().c_str(), stdout);
@@ -533,6 +547,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     std::vector<TypedText> typed;
     bool dump = false;
     int popupReason = 0;
+    DWORD activateAt = 0;
     for (int i = 1; i < argc; ++i) {
         const std::wstring key = argv[i];
         if (key == L"--dump") {
@@ -545,6 +560,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         else if (key == L"--snapshot") snapshot = value;
         else if (key == L"--time") duration = DWORD(_wtoi(value.c_str()));
         else if (key == L"--popup") popupReason = _wtoi(value.c_str());
+        else if (key == L"--activate") activateAt = DWORD(_wtoi(value.c_str()));
         else if (key == L"--startup") return setRunAtStartup(value == L"on") ? 0 : 1;
         else if (key == L"--import") importSource = value;
         else if (key == L"--out") importTarget = value;
@@ -589,7 +605,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (!snapshot.empty() && popupReason)
         return attention::snapshot(app.db, popupReason, snapshot.c_str()) ? 0 : 1;
     if (!snapshot.empty())  // unseeded rand: snapshots are reproducible
-        return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump);
+        return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump,
+                           activateAt);
     std::srand(unsigned(std::time(nullptr)));  // as InitInstance does (1000:25dc)
     return runWindow(instance, show);
 }

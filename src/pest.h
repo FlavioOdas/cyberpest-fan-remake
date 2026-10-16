@@ -243,5 +243,4 @@ private:
     int saved29a_[5] = {};      // f_29a..f_2a2
     std::vector<int32_t> owned_;  // f_138 (count f_13c, from module -337)
     long lastSecond_ = 0;       // DAT_1050_035a
-    long lastInteraction_ = 0;  // theApp time of the last user action [inf]
 };

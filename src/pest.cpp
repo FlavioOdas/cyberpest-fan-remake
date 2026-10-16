@@ -1687,11 +1687,11 @@ void Pest::checkOnHeat() {  // e104: on heat during its birth hour (after minute
 }
 
 void Pest::checkAttention(long now) {  // e17e: bored of being ignored
-    const long idleMinutes = (now - lastInteraction_) / 60;
+    const long idleMinutes = (now - world_.idleSince(now)) / 60;
     const int extroversion = std::min(moodPersonality().y / 100, 100);
     if (idleMinutes > 120 - extroversion) {
         world_.requestAttention(-600);  // bored
-        lastInteraction_ = now;
+        world_.resetIdle(now);
     }
 }
 
@@ -1711,7 +1711,6 @@ void Pest::maybePhone() {  // e3a8: someone phones if they're needed
 
 void Pest::lifeTick() {  // e452: once per (wall-clock) second
     const long now = wallSeconds();
-    if (lastInteraction_ == 0) lastInteraction_ = now;
     if (now == lastSecond_ && !advanceTime_) return;
     age_ += advanceTime_ ? 60 : 1;
     if (fleas_) spawnFlea();

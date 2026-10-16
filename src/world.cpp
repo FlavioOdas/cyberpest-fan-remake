@@ -49,6 +49,14 @@ std::unique_ptr<GameObject> World::makeObject(int32_t moduleId, const adm::Node*
     return createObjectForClass(module->ref, *this, moduleId, module);
 }
 
+void World::setActive(bool active, bool fromOtherApp, long now) {  // 1000:2192 / 4abc
+    if (active_ && !active) inactiveSince_ = now;
+    active_ = active;
+    if (active && fromOtherApp) {
+        if (GameObject* background = find(-70)) background->sendMessage(-120, nullptr);
+    }
+}
+
 GameObject* World::spawn(int32_t moduleId, const Vec3& pos, bool facing) {
     const adm::Node* module = db_->findModule(moduleId);
     if (!module) return nullptr;
