@@ -80,9 +80,11 @@ bool Pest::create(const Vec3& pos, bool facing) {  // 0000
 }
 
 bool Pest::init() {  // 8a3e
-    good_ = 50;  // 1000:2d9a: default [Cheats] GoodStomach
-    junk_ = bowels_ = mood_ = 0;
-    fleas_ = rabies_ = heat_ = treated_ = 0;
+    const Cheats& cheats = world_.cheats();  // PEST.INI [Cheats], GoodStomach default 50
+    good_ = cheats.goodStomach, junk_ = cheats.junkStomach, bowels_ = cheats.bowels;
+    mood_ = cheats.mentalState;
+    fleas_ = cheats.gotFleas, rabies_ = cheats.gotRabies, heat_ = cheats.onHeat;
+    treated_ = 0;
     lastChoice_ = reinforceWordPending_ = 0;
     std::fill(std::begin(saved29a_), std::end(saved29a_), 0);
     owned_.clear();
@@ -126,8 +128,12 @@ bool Pest::setBirthHour(int hour) {  // 8dca
                 const std::vector<int32_t> values = adm::intValues(entry);
                 if (values.size() < 2) return false;
                 personality_ = birthPersonality_ = {values[0], values[1]};
-                return loadPreferences(hour, kPrefActivities, &activities_) &&
-                       loadPreferences(hour, kPrefReactions, &reactions_);
+                if (!loadPreferences(hour, kPrefActivities, &activities_) ||
+                    !loadPreferences(hour, kPrefReactions, &reactions_)) return false;
+                // INI overrides of the current personality only; the birth value stays.
+                if (world_.cheats().neuroticism >= 0) personality_.x = world_.cheats().neuroticism;
+                if (world_.cheats().extroversion >= 0) personality_.y = world_.cheats().extroversion;
+                return true;
             }
         }
     }
@@ -1772,10 +1778,10 @@ void Pest::onEvent(GameObject* from, int32_t value, int type) {
         case -283: setAttached(true); break;
         case -226:  // reset stomach to the INI cheat values when overfull
             if (good_ + junk_ > 99) {
-                good_ = 50;
-                junk_ = 0;
+                good_ = world_.cheats().goodStomach;
+                junk_ = world_.cheats().junkStomach;
             }
-            if (bowels_ > 99) bowels_ = 0;
+            if (bowels_ > 99) bowels_ = world_.cheats().bowels;
             break;
         case -222:
             world_.requestAttention();

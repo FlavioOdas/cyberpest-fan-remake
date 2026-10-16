@@ -79,7 +79,7 @@ s), `f_128/12a/12c`=-415 5,10,20, `f_12e/130`=-416 25,75 (stomach bands), `f_132
   supplies the INI default); other body defaults are zero. Module -380 has one two-int
   Neuroticism/Extroversion row per birth hour, indexed by hour-1 without scaling. The
   original can override the current personality from INI cheats after retaining that
-  birth personality; INI cheats are not loaded by the remake yet.
+  birth personality; the remake applies these INI cheats (`engine-overview.md`).
 - **Interactions** (`1246`): step 10 rechecks distance/held height and can enter a reaction
   state; step 11 either returns to walking, turns away with the parent, rejects an
   incompatible target reaction (-505), or starts the target reaction after releasing it;

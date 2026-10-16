@@ -55,6 +55,38 @@ std::wstring exeDirectory() {
     return dir.substr(0, dir.find_last_of(L"\\/") + 1);
 }
 
+// PEST.INI next to the exe (the original reads it from the current directory, 1000:28ce).
+std::wstring iniPath() { return exeDirectory() + L"PEST.INI"; }
+
+int iniInt(const wchar_t* section, const wchar_t* key, int fallback) {  // signed, unlike GetPrivateProfileInt
+    wchar_t text[32] = L"";
+    GetPrivateProfileStringW(section, key, L"", text, 32, iniPath().c_str());
+    return *text ? _wtoi(text) : fallback;
+}
+
+void readIniSettings() {  // App_ReadIniSettings 1000:28ce
+    app.world.setAudioEnabled(iniInt(L"Options", L"Audio", 1) != 0);
+    Cheats c;
+    c.neuroticism = iniInt(L"Cheats", L"Neuroticism", -1);
+    c.extroversion = iniInt(L"Cheats", L"Extroversion", -1);
+    c.goodStomach = iniInt(L"Cheats", L"GoodStomach", 50);
+    c.junkStomach = iniInt(L"Cheats", L"JunkStomach", 0);
+    c.bowels = iniInt(L"Cheats", L"Bowels", 0);
+    c.mentalState = iniInt(L"Cheats", L"MentalState", 0);
+    c.gotFleas = iniInt(L"Cheats", L"GotFleas", 0);
+    c.gotRabies = iniInt(L"Cheats", L"GotRabies", 0);
+    c.onHeat = iniInt(L"Cheats", L"OnHeat", 0);
+    app.world.setCheats(c);
+}
+
+// [Files] ADB, as written by the original installer, when that file exists.
+std::wstring iniAdbPath() {
+    wchar_t path[MAX_PATH] = L"";
+    GetPrivateProfileStringW(L"Files", L"ADB", L"", path, MAX_PATH, iniPath().c_str());
+    if (!*path || GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) return {};
+    return path;
+}
+
 void loadCursors() {
     const adm::Node* table = app.db.findModule(kCursorTable);
     if (!table) return;
@@ -84,6 +116,7 @@ bool loadGame(const std::wstring& admPath) {
     loadCursors();
     app.world.setSoundPlayer([](const Sound* s) { app.mixer.play(0, s); });
     app.world.setAudioHandler([](bool on) { app.mixer.setMuted(!on); });  // audio button -94
+    readIniSettings();
     app.world.setAppMessageHandler([](int32_t message) {  // 1000:4768
         if (!app.hwnd) return;
         if (message == kAppClose) PostMessageW(app.hwnd, WM_CLOSE, 0, 0);
@@ -317,6 +350,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         }
     }
     LocalFree(argv);
+    if (admPath.empty()) admPath = iniAdbPath();
     if (admPath.empty()) {
         admPath = exeDirectory() + L"PEST.ADM";
         if (GetFileAttributesW(admPath.c_str()) == INVALID_FILE_ATTRIBUTES) admPath = L"PEST.ADM";

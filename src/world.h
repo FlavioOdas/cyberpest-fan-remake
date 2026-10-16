@@ -24,6 +24,15 @@ struct GameConfig {  // config module -42 (App_LoadConfig 1000:3584)
     int frameScale = 1;   // -49 (theApp+0x6d6): 1 high spec, 2 low spec
 };
 
+// PEST.INI [Cheats] values that change the pest (App_ReadIniSettings 1000:28ce; theApp at
+// DS:0x26dc, so these are DAT_1050_2992..29a6). The developer keys and trace switches are
+// not ported; docs/re/engine-overview.md lists them.
+struct Cheats {
+    int neuroticism = -1, extroversion = -1;  // +0x2b6/+0x2b8: override when >= 0
+    int goodStomach = 50, junkStomach = 0, bowels = 0, mentalState = 0;  // +0x2be..+0x2c4
+    int gotFleas = 0, gotRabies = 0, onHeat = 0;                          // +0x2c6..+0x2ca
+};
+
 class World {
 public:
     using SoundPlayer = std::function<void(const Sound*)>;
@@ -71,6 +80,8 @@ public:
     void send(int32_t target, int32_t message);  // deliver a message (type-0 event)
     const adm::Database& db() const { return *db_; }
     const GameConfig& config() const { return config_; }
+    const Cheats& cheats() const { return cheats_; }
+    void setCheats(const Cheats& c) { cheats_ = c; }
     uint32_t now() const { return now_; }
     GameObject* focus() const { return focus_; }
     void takeFocus(GameObject* obj) { focus_ = obj; }
@@ -92,6 +103,7 @@ private:
 
     const adm::Database* db_ = nullptr;
     GameConfig config_;
+    Cheats cheats_;
     std::vector<std::unique_ptr<GameObject>> objects_;  // front (highest z) first
     std::vector<std::unique_ptr<GameObject>> removed_;
     std::unordered_map<uint32_t, std::unique_ptr<Flc>> images_;

@@ -146,7 +146,7 @@ All twenty special classes are now ported. These eight live in `src/punishments.
   edges from list -318 (−100, 740); -324 starts a run, end of -325 at the hole enters -328,
   -327 stops it, -1 returns it to -321. [obs]
 - **-94 audio button** (`1010:06f8`): -164 off, -163 on, -162 picks the current setting;
-  the flag is `theApp+0xcc` (INI `[Options] Audio`) and mutes the mixer. [obs; INI not read yet]
+  the flag is `theApp+0xcc` (INI `[Options] Audio`) and mutes the mixer. [obs; the remake reads the INI default since 2026-10-17]
 
 Verified headlessly: punch button → 16-ton picture → drag the weight above the pest and release
 → pest -293 (PPSQUASH, feet under the weight); terminator button → cannon rises, follows the

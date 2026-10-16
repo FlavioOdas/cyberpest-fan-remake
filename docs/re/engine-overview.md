@@ -46,6 +46,28 @@ parameter", "Value out of range", "Bad ProgInst Value", "Unknown Object".
   MentalState, GotFleas, GotRabies, OnHeat`
 - `[Intl] sShortDate, sTime` (read from WIN.INI for date display)
 
+Details (2026-10-17, Claude; `App_ReadIniSettings 1000:28ce`, observed): the file is
+`<current directory>\PEST.INI` (string resource 4). `Ini_GetInt(app, default, key,
+section)` stores into theApp, a static object at DS:0x26dc, so other code reads the
+values as globals `DAT_1050_(0x26dc + offset)`. Defaults are 0 except `[Options] Audio`
+= 1, `GoodStomach` = 50 and `Neuroticism`/`Extroversion` = -1 (no override).
+
+| Key | theApp | Used by |
+|---|---|---|
+| Audio | +0xcc | audio button -94 / mixer mute |
+| GoodStomach, JunkStomach, Bowels, MentalState, GotFleas, GotRabies, OnHeat | +0x2be..+0x2ca | pest init `1008:8a3e`; GoodStomach/JunkStomach/Bowels also the overfull reset on -226 (`1008:5b54`) |
+| Neuroticism, Extroversion | +0x2b6/+0x2b8 | `1008:8dca`: override current personality when ≥ 0 (birth value kept) |
+| FollowRightClicks | +0x29a | `1000:1206` right-button handling |
+| KeyBehaviours, CreateMouse, AdvanceTime, RestoreHousehold, SetPersonality, DumpPersonality | +0x29e.. | developer keys in `1000:14d0` (Esc restores household; Space advances time; Ctrl/Shift letters force behaviours; M mouse; P/D personality) |
+| ShowHitAreas, ShowCells | +0x2a4/+0x2a6 | `Runner_DebugDrawHitAreas 1000:a6e2` |
+| Trace*, NoDefaultAction, ForcedMoveType, AsyncLoad, Cache* | | diagnostics / loading |
+
+The remake reads `PEST.INI` next to the exe: `[Files] ADB` (used when no `--adm` is
+given and the file exists), `[Options] Audio` and the pest cheats in the first three rows.
+Values are parsed as signed (GetPrivateProfileInt would turn negatives into 0). The
+developer keys, debug drawing and trace switches are not ported. Windows' INI API does
+not read the file when the exe runs from a `\\wsl$` path; test from a Windows folder.
+
 ## Pest model hints
 
 Personality axes **Neuroticism** and **Extroversion** (Eysenck model), set by birth hour
