@@ -32,12 +32,20 @@
 1000:b3b4	Runner_MatchEvent	vtbl+0x40
 1000:b44c	Runner_FireEvent
 1008:0000	Pest_Create	pest vtbl+0x14
+1008:1246	Pest_InteractStep	steps 1..12, including reaction preparation
 1008:56e8	Pest_vt34
 1008:571c	Pest_vt38
 1008:57d6	Pest_vt3c
 1008:583c	Pest_vt44
 1008:5b54	Pest_OnEvent	pest vtbl+0x68
 1008:69b2	Pest_OnFrame	pest vtbl+0x4c
+1008:8a3e	Pest_Init	body defaults and saved/newborn state
+1008:8d28	Pest_Birth	birth time and birth hour
+1008:8dca	Pest_SetBirthHour	personality and preference lists
+1008:b5a2	Pest_HearWords	megaphone teaching or command
+1008:b7aa	Pest_LearnWord	validates and records a taught word
+1008:bc00	Pest_Reinforce	adjusts personality and ordered preferences
+1008:e452	Pest_LifeTick	needs and timed events
 1008:7514	vfn_1008_7514	vtable/callback target (auto)
 1008:77da	vfn_1008_77da	vtable/callback target (auto)
 1008:e6de	vfn_1008_e6de	vtable/callback target (auto)

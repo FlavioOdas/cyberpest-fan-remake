@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -27,12 +26,18 @@ enum : int32_t {
     kTv = -72, kMouse = -91, kFoodFlap = -74, kPhone = -98, kFlea = -518, kMouseVisitor = -314,
 };
 
-int rnd(int lo, int hi) {  // Random 1038:5546, inclusive [inf]
+int rnd(int lo, int hi) {  // Random 1038:5546, inclusive
     if (hi < lo) std::swap(lo, hi);
     return lo + std::rand() % (hi - lo + 1);
 }
 
 long wallSeconds() { return long(std::time(nullptr)); }
+
+bool isWordByte(unsigned char value) {  // 1038:6a1e: CRT space/punctuation flags
+    return !((value >= 9 && value <= 13) || (value >= 32 && value <= 47) ||
+             (value >= 58 && value <= 64) || (value >= 91 && value <= 96) ||
+             (value >= 123 && value <= 126));
+}
 
 }  // namespace
 
@@ -75,8 +80,10 @@ bool Pest::create(const Vec3& pos, bool facing) {  // 0000
 }
 
 bool Pest::init() {  // 8a3e
-    good_ = junk_ = bowels_ = mood_ = 0;  // [Cheats] GoodStomach/JunkStomach/Bowels/MentalState… default 0
+    good_ = 50;  // 1000:2d9a: default [Cheats] GoodStomach
+    junk_ = bowels_ = mood_ = 0;
     fleas_ = rabies_ = heat_ = treated_ = 0;
+    lastChoice_ = reinforceWordPending_ = 0;
     std::fill(std::begin(saved29a_), std::end(saved29a_), 0);
     owned_.clear();
     if (const adm::Node* profile = adm::childModule(*module_, kProfileTable)) {
@@ -84,6 +91,7 @@ bool Pest::init() {  // 8a3e
             if (l.tag == adm::Tag::List) owned_.push_back(0);
         }
     }
+    if (owned_.empty()) return false;
     if (!load()) birth();
     lastChoicePoint_ = moodPersonality();
     return loadTable(kTableIdle, &idleTable_) && loadTable(kTableWalk, &walkTable_) &&
@@ -105,20 +113,20 @@ void Pest::birth() {  // 8d28: born now, in this hour
 
 bool Pest::setBirthHour(int hour) {  // 8dca
     birthHour_ = hour;
-    // -380: birth personality (data × 1, one row per hour) [inf: values are the N/E pair].
-    int n = 0, e = 0;
     if (const adm::Node* table = adm::childModule(*module_, kBirthPersonality)) {
         int row = 0;
-        for (const adm::Node& l : table->children) {
-            if (l.tag != adm::Tag::List) continue;
+        for (const adm::Node& entry : table->children) {
+            if (entry.tag != adm::Tag::List) continue;
             if (++row == hour) {
-                const std::vector<int32_t> v = adm::intValues(l);
-                if (v.size() >= 2) n = v[0], e = v[1];
+                const std::vector<int32_t> values = adm::intValues(entry);
+                if (values.size() < 2) return false;
+                personality_ = birthPersonality_ = {values[0], values[1]};
+                return loadPreferences(hour, kPrefActivities, &activities_) &&
+                       loadPreferences(hour, kPrefReactions, &reactions_);
             }
         }
     }
-    personality_ = birthPersonality_ = {n, e};
-    return loadPreferences(hour, kPrefActivities, &activities_) && loadPreferences(hour, kPrefReactions, &reactions_);
+    return false;
 }
 
 bool Pest::loadTable(int32_t module, std::vector<TableRow>* rows) {  // 9fd0
@@ -596,12 +604,47 @@ void Pest::interactStep() {  // 1246
     case 9:
         interact_ = (!target_->held() || target_->heightAboveFloor() < 1) ? 6 : 7;
         break;
-    case 10:  // arrived next to the target: react to it [rest of 1246, see docs]
-        mode_ = 3;
-        enterState(targetReaction_ ? targetReaction_ : kStDecide);
+    case 10:
+        if (position() != interactionPoint(targetDistance_, target_) ||
+            (target_->held() && target_->heightAboveFloor() > 0)) {
+            interact_ = 6;
+        } else {
+            interact_ = 11;
+            if (target_->property(-25)) enterState(reactionState3());
+        }
+        break;
+    case 11:
+        if (position() != interactionPoint(targetDistance_, target_) ||
+            (target_->held() && target_->heightAboveFloor() > 0)) {
+            interact_ = 6;
+            break;
+        }
+        if (fleeIfParentOffscreen()) break;
+        interact_ = 12;
+        if (target_->property(-522) && target_->property(-522) != targetReaction_) {
+            hasCommandedReaction_ = hasCommandedObject_ = 0;
+            enterState(kStCommandFail);
+            chooseReactionForTarget();
+            interact_ = 6;
+        } else if (target_->state() != -108) {
+            hasCommandedReaction_ = hasCommandedObject_ = 0;
+            enterState(kStCommandFail);
+        } else {
+            target_->setProperty(-180, 0);
+            target_->setProperty(-182, 0);
+            target_->setFacing(facing());
+            rememberBehaviour(targetReaction_);
+            rememberObject(0);
+            hasCommandedReaction_ = hasCommandedObject_ = 0;
+            enterState(targetReaction_);
+        }
+        break;
+    case 12:
+        if (target_) noticeObject(0, target_);
+        if (!target_) setParent(nullptr);
+        wander();
         break;
     default:
-        mode_ = 0;
         break;
     }
 }
@@ -1394,18 +1437,17 @@ void Pest::hearWords(bool teaching, GameObject* megaphone) {  // b5a2
     if (!text.empty()) {
         if (!teaching) {
             auto find = [&](const std::map<std::string, Word>& dict, std::string* word) {  // 1010:1fce
-                size_t i = 0;
-                while (i < text.size()) {
-                    while (i < text.size() && !std::isalpha(static_cast<unsigned char>(text[i]))) ++i;
-                    size_t j = i;
-                    while (j < text.size() && std::isalpha(static_cast<unsigned char>(text[j]))) ++j;
-                    std::string w = text.substr(i, j - i);
-                    for (char& c : w) c = char(std::tolower(static_cast<unsigned char>(c)));
-                    if (!w.empty() && dict.count(w)) {
-                        *word = w;
+                size_t begin = 0;
+                while (begin < text.size()) {
+                    while (begin < text.size() && !isWordByte(static_cast<unsigned char>(text[begin]))) ++begin;
+                    size_t end = begin;
+                    while (end < text.size() && isWordByte(static_cast<unsigned char>(text[end]))) ++end;
+                    const std::string candidate = text.substr(begin, end - begin);
+                    if (!candidate.empty() && dict.count(candidate)) {
+                        *word = candidate;
                         return true;
                     }
-                    i = j;
+                    begin = end;
                 }
                 return false;
             };
@@ -1429,16 +1471,15 @@ void Pest::hearWords(bool teaching, GameObject* megaphone) {  // b5a2
     save();
 }
 
-void Pest::learnWord(int32_t meaning, const std::string& raw, std::map<std::string, Word>& dict) {  // b7aa
-    std::string text;
-    for (char c : raw) {
-        if (std::isalpha(static_cast<unsigned char>(c))) text += char(std::tolower(static_cast<unsigned char>(c)));
-    }
-    if (text.empty()) return;
+void Pest::learnWord(int32_t meaning, const std::string& text, std::map<std::string, Word>& dict) {  // b7aa
     auto it = dict.find(text);
     if (it == dict.end() || it->second.value != meaning) {
         commandWords_.erase(text);
         objectWords_.erase(text);
+        if (text.empty() || !std::all_of(text.begin(), text.end(), isWordByte)) {
+            if (Runner* current = runner()) current->nextState = -487;
+            return;
+        }
         dict[text] = {meaning, wordStrength_};
         if (Runner* r = runner()) r->nextState = -489;  // learnt
     } else {
@@ -1519,8 +1560,8 @@ void Pest::reinforce(int delta) {  // bc00: snacks (+) and shocks (−)
     if (lastChoicePoint_.x != personality_.x || lastChoicePoint_.y != personality_.y) {
         // Move the personality toward (reward) or away from (punishment) the rewarded behaviour.
         const long long dx = lastChoicePoint_.x - personality_.x, dy = lastChoicePoint_.y - personality_.y;
-        personality_.x = int(std::clamp<long long>(personality_.x + dx * delta / 100, 0, 10000));
-        personality_.y = int(std::clamp<long long>(personality_.y + dy * delta / 100, 0, 10000));
+        personality_.x = int(std::clamp<long long>(personality_.x + 2 * dx * delta / 100, 0, 10000));
+        personality_.y = int(std::clamp<long long>(personality_.y + 2 * dy * delta / 100, 0, 10000));
     }
     lastChoice_ = 0;
     reinforceWordPending_ = 0;
@@ -1674,6 +1715,7 @@ void Pest::lifeTick() {  // e452: once per (wall-clock) second
         maybePhone();
     }
     if (age_ % 7200 == 0) cueSend(kFoodFlap, -165);  // every two hours: a delivery at the flap
+    advanceTime_ = false;
     lastSecond_ = now;
 }
 
@@ -1718,13 +1760,16 @@ void Pest::onEvent(GameObject* from, int32_t value, int type) {
             if (!property(-423)) {
                 clearWalkFlags();
                 dropTarget();
-                userClicked_ = 0;
+                turning_ = 0;
                 enterState(-293);
             }
             break;
         case -283: setAttached(true); break;
         case -226:  // reset stomach to the INI cheat values when overfull
-            if (good_ + junk_ > 99) good_ = junk_ = 0;
+            if (good_ + junk_ > 99) {
+                good_ = 50;
+                junk_ = 0;
+            }
             if (bowels_ > 99) bowels_ = 0;
             break;
         case -222:
@@ -1741,7 +1786,7 @@ void Pest::onEvent(GameObject* from, int32_t value, int type) {
                 if (mode_ == 5) {
                     startTimer(idleMax_, idleMin_);
                     idleChoice_ = 1;
-                } else if (position().y != 0) {
+                } else if (position().y < peepY_) {
                     interruptedByUser = true;
                     userClicked_ = 1;
                 }
@@ -1756,10 +1801,10 @@ void Pest::onEvent(GameObject* from, int32_t value, int type) {
             if (!property(-423) && state() != -169) {
                 stopWalking();
                 dropTarget();
-                mode_ = 0;
+                scripted_ = 0;
                 timerOn_ = 0;
-                userClicked_ = 0;
-                if (position().y != 0) mode_ = 2;
+                turning_ = 0;
+                if (position().y < world_.config().floorMaxY) mode_ = 2;
                 enterState(-169);
             }
             break;
@@ -1793,7 +1838,7 @@ void Pest::onEvent(GameObject* from, int32_t value, int type) {
                 rememberObject(0);
                 rememberBehaviour(0);
                 hasCommandedReaction_ = 0;
-                commandedObject_ = 0;
+                hasCommandedObject_ = 0;
                 resetMode_ = 1;
                 enterState(-443);
             }

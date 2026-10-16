@@ -73,7 +73,24 @@ s), `f_128/12a/12c`=-415 5,10,20, `f_12e/130`=-416 25,75 (stomach bands), `f_132
 - **Entrance**: top-level property -322=1 means visible. Hatch message -153 sets mode 2 and
   enters -324; the ordinary walk logic brings the pest from x=-100 into the room. See
   `engine-runtime.md` for the visibility correction and original drawing evidence.
+- **Birth** (`8a3e`, `8d28`, `8dca`): newborn GoodStomach defaults to 50 (`1000:2d9a`
+  supplies the INI default); other body defaults are zero. Module -380 has one two-int
+  Neuroticism/Extroversion row per birth hour, indexed by hour-1 without scaling. The
+  original can override the current personality from INI cheats after retaining that
+  birth personality; INI cheats are not loaded by the remake yet.
+- **Interactions** (`1246`): step 10 rechecks distance/held height and can enter a reaction
+  state; step 11 either returns to walking, turns away with the parent, rejects an
+  incompatible target reaction (-505), or starts the target reaction after releasing it;
+  step 12 notices the target again and wanders. The old port skipped these steps.
+- **Learning** (`b5a2`, `b7aa`, `1010:1c34`, `1038:6a1e`): the megaphone keeps case from
+  the edit control. Dictionary words may contain digits; an invalid byte rejects the whole
+  taught word and selects state -487. Next states -488/-489 mean understood/learned.
+- **Reinforcement** (`bc00`): personality changes by twice the difference from the last
+  chosen behaviour point times reward/penalty divided by 100; values clamp to 0..10000.
+  `e452` clears AdvanceTime after each life tick. Event -187 compares y with peepY (-408),
+  while -169 uses the floor max and clears scripted/timer/turning flags (`5b54`).
 - **Events** (`5b54`): click → `f_178`; -502 shock, -494 snack (mood ±`f_13e`), -448 flea spray,
   -202/-201 megaphone teach/command (`b5a2`), -27..-40 feed/clean/stomach changes
   (`c3b6`, `c426`, `c472`, `bc00` reward/punish), -1 re-enter after removal (`6736`), …
 - **Save** (`8f32` → `PEST.TMP` renamed to `PEST.CFG`, magic 0x3b978a5e) / **load** (`962c`).
+  The remake uses its own text save and does not read the original binary format.
