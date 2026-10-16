@@ -27,7 +27,8 @@ struct Cue {
 };
 
 struct Sprite {
-    const Flc* flc = nullptr;
+    const Flc* flc = nullptr;         // image list value 0
+    const Flc* flcFacing = nullptr;   // value 1: pre-drawn variant used while facing (+0xb4) is set
     std::string name;
     const Sound* sound = nullptr;
     int frame = 0;               // +0x62 current frame
@@ -46,6 +47,7 @@ struct Sprite {
     uint32_t nextFrameAt = 0;
 
     int frameCount() const { return flc ? flc->frameCount() : 0; }
+    const Flc* image(bool facing) const { return facing && flcFacing ? flcFacing : flc; }
 };
 
 struct Event {
@@ -72,6 +74,7 @@ struct Runner {
     bool done = false;                   // +0x42
     std::vector<Event> events;           // +0x20
     std::vector<HitArea> hitAreas;       // +0x12
+    Point2 hitOffset;                    // +0x0a (-157), subtracted from the hit point
 
     Sprite* intro() const { return sprites[0].get(); }
     Sprite* main() const { return sprites[1].get(); }

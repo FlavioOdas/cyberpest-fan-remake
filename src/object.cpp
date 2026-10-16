@@ -15,6 +15,7 @@ enum : int32_t {
     kOnHover = -170, kOnMessage = -121, kIntro = -306, kMain = -111, kOutro = -431,
     kHoldLast = -112, kLoop = -183, kHitArea = -114, kSound = -116, kSend = -119, kSendAt = -176,
     kNext = -132, kRandomNext = -151, kMotion = -326, kEndMove = -455, kOffset = -548, kMoveRange = -493,
+    kHitOffset = -157,
 };
 
 // Messages and properties used by the base object.
@@ -141,6 +142,7 @@ void GameObject::runCommands(Runner& r, const adm::Node& state) {  // State_Run 
                 s->flc = world_.image(*a.file);
                 s->name = a.file->name;
             }
+            if (const adm::FileRef* f2 = adm::fileValue(list, 1)) s->flcFacing = world_.image(*f2);
             break;
         }
         case kHoldLast:
@@ -184,6 +186,9 @@ void GameObject::runCommands(Runner& r, const adm::Node& state) {  // State_Run 
             }
             break;
         }
+        case kHitOffset:
+            r.hitOffset = {a[0], a[1]};
+            break;
         case kHitArea:
             r.hitAreas.push_back({a[0], a[1], a[2], a[3], a[4], a[5], a[6]});
             break;
@@ -256,7 +261,7 @@ void GameObject::cueMove(int32_t target, const Vec3& delta) {  // 1000:6a52
 void GameObject::cueSpawn(int32_t module, const Vec3& offset) {  // 1000:6aa0
     Vec3 d = offset;
     if (facing_) d.x = -d.x;  // [inf] offsets follow the spawner's facing
-    if (!world_.find(module)) world_.spawn(module, pos_ + d, facing_);
+    world_.spawn(module, pos_ + d, facing_);
 }
 
 void GameObject::cueRemove(int32_t target) {  // 1000:6b9a
@@ -420,13 +425,16 @@ void GameObject::onFrame() {  // 1000:6c92: falling under gravity
 // ---------------------------------------------------------------------------------------------
 // Input and events
 
-bool GameObject::hitTest(Point2 p, const HitArea** area) const {
-    if (!runner_ || !shown_ || !shown_->flc) return false;
-    const Flc& f = *shown_->flc;
-    const int left = pos_.x + shown_->offset.x - f.width() / 2, top = pos_.y + shown_->offset.y - f.height();
-    int lx = p.x - left;
-    const int ly = p.y - top;
-    if (facing_) lx = f.width() - 1 - lx;  // sprites are mirrored when facing [inf]
+bool GameObject::hitTest(Point2 p, const HitArea** area) const {  // transform from 1000:acc0
+    if (!runner_) return false;
+    const Sprite* s = runner_->main() ? runner_->main() : runner_->current;
+    if (!s || !s->flc) return false;
+    int lx = p.x - pos_.x, ly = p.y - pos_.y;  // relative to the anchor
+    if (facing_) lx = -lx;
+    lx -= runner_->hitOffset.x;
+    ly -= runner_->hitOffset.y;
+    lx += s->flc->width() / 2;  // to sprite top-left
+    ly += (shown_ && shown_->flc ? shown_->flc->height() : s->flc->height());
     for (const HitArea& h : runner_->hitAreas) {
         if (lx >= h.x1 && lx < h.x2 && ly >= h.y1 && ly < h.y2) {
             *area = &h;

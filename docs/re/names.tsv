@@ -376,7 +376,7 @@
 1038:2932	Object_FlagB4	+0xb4 (property -323)
 1038:29cc	Object_World	owner world/screen of an object
 1038:29ee	Object_Runner	obj+0x4e
-1038:2ad2	Object_IsVisible	+0x54 (property -182)
+1038:2ad2	Object_IsHeld	+0x54 (property -182: held by the mouse)
 1038:2af0	Object_Parent	+0xbc
 1038:2c28	Runner_ctor	vtable 1038:3832
 1038:2c94	Runner_CurrentSprite	+0x3a
@@ -473,3 +473,5 @@
 1038:9558	vfn_1038_9558	vtable/callback target (auto)
 1038:96b2	vfn_1038_96b2	vtable/callback target (auto)
 1038:9914	vfn_1038_9914	vtable/callback target (auto)
+1000:781e	Object_HeightAboveFloor	(floorMinY - y) + z - 3000
+1008:8a3e	pest_8a3e	direct call target missed by Ghidra

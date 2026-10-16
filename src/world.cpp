@@ -147,11 +147,12 @@ void World::draw(Surface& target) const {
                      [](const GameObject* a, const GameObject* b) { return a->position().z < b->position().z; });
     for (const GameObject* o : order) {
         const Sprite& s = *o->shownSprite();
-        const Flc& f = *s.flc;
+        const Flc& f = *s.image(o->facing());
         const int frame = std::clamp(s.frame, 0, f.frameCount() - 1);
-        const Vec3 p = o->position() + s.offset;
-        target.blit(f.frames()[size_t(frame)].data(), f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(), 0,
-                    o->facing());
+        Vec3 off = s.offset;
+        if (o->facing()) off.x = -off.x;
+        const Vec3 p = o->position() + off;
+        target.blit(f.frames()[size_t(frame)].data(), f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(), 0);
     }
 }
 
