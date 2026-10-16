@@ -37,8 +37,13 @@ and CMake into `~/tools`. Then `source ~/tools/env.sh`. Regenerate analysis outp
 python3 tools/adm_dump.py original/extracted/APP/SLOW/PEST.ADM work/adm
 python3 tools/ne_disasm.py original/extracted/APP/PEST.EXE work/disasm
 "$GHIDRA_HOME/support/analyzeHeadless" work/ghidra CyberPest -import original/extracted/APP/PEST.EXE \
-  -overwrite -scriptPath tools/ghidra -postScript DecompileAll.java work/ghidra/pest.c work/ghidra/functions.tsv
+  -overwrite -scriptPath tools/ghidra -preScript EnableParamId.java -postScript DecompileAll.java work/ghidra/pest.c work/ghidra/functions.tsv
 ```
+
+Handy: `python3 tools/gfunc.py sub_1_5604` (or `1000:5604`) prints one decompiled function;
+`python3 tools/symbol_xref.py -178` shows where an ADM symbol id is used in code and data;
+`python3 tools/ne_resources.py original/extracted/APP/PEST.EXE` dumps strings/menus/dialogs.
+Ghidra selector = 0x1000 + 8*(segment-1); `sub_<seg>_<off>` labels come from `tools/ne_disasm.py`.
 
 ## Layout
 
