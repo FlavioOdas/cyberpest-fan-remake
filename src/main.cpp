@@ -18,7 +18,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -586,7 +588,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
     if (!snapshot.empty() && popupReason)
         return attention::snapshot(app.db, popupReason, snapshot.c_str()) ? 0 : 1;
-    if (!snapshot.empty())
+    if (!snapshot.empty())  // unseeded rand: snapshots are reproducible
         return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump);
+    std::srand(unsigned(std::time(nullptr)));  // as InitInstance does (1000:25dc)
     return runWindow(instance, show);
 }

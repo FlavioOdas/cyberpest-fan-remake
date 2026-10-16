@@ -343,8 +343,9 @@ int32_t GameObject::property(int32_t symbol) const {  // 1000:67c8
     }
 }
 
-void GameObject::moveBy(const Vec3& d) {  // 1038:2a10 (attached children follow [inf])
+void GameObject::moveBy(const Vec3& d) {  // 1038:2a10: an attached object drags its parent along
     pos_ += d;
+    if (attached_ && parent_) parent_->moveBy(d);
 }
 
 void GameObject::setWalkTarget(const Vec3& t) {  // 1000:73f6

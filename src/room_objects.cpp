@@ -5,7 +5,7 @@
 #include "world.h"
 
 namespace {
-int rnd(int lo, int hi) { return lo + std::rand() % (hi - lo + 1); }  // Random 1038:5546 [inf]
+int rnd(int lo, int hi) { return lo + std::rand() % (hi - lo + 1); }  // Random 1038:5546: rand() % (hi + 1 - lo) + lo
 }  // namespace
 
 // ---------------------------------------------------------------------------------------------
