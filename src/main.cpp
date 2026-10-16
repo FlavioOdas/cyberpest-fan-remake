@@ -261,6 +261,55 @@ void present(HWND hwnd, HDC dc) {
                   app.screen.pixels(), reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS, SRCCOPY);
 }
 
+// Window icon drawn from the pest's standing sprite in the player's PEST.ADM (the original
+// icon is an asset, so it is not shipped). Index 0 is the transparent green.
+HICON makeIcon(int size) {
+    const adm::FileRef* file = app.db.findFile("PSSTILL.FLC");
+    Flc flc;
+    if (!file || !flc.open(app.db.bytes(*file)) || !flc.decodeAll() || flc.frames().empty()) return nullptr;
+    const std::vector<uint8_t>& px = flc.frames()[0];
+    const int w = flc.width(), h = flc.height();
+    int left = w, top = h, right = -1, bottom = -1;
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x)
+            if (px[size_t(y * w + x)]) left = std::min(left, x), right = std::max(right, x), top = std::min(top, y),
+                                       bottom = std::max(bottom, y);
+    if (right < left) return nullptr;
+    const int cw = right - left + 1, ch = bottom - top + 1, side = std::max(cw, ch);
+    BITMAPV5HEADER info = {};
+    info.bV5Size = sizeof info;
+    info.bV5Width = size;
+    info.bV5Height = -size;  // top-down
+    info.bV5Planes = 1;
+    info.bV5BitCount = 32;
+    info.bV5Compression = BI_BITFIELDS;
+    info.bV5RedMask = 0x00FF0000, info.bV5GreenMask = 0x0000FF00, info.bV5BlueMask = 0x000000FF;
+    info.bV5AlphaMask = 0xFF000000;
+    void* bits = nullptr;
+    HDC screen = GetDC(nullptr);
+    HBITMAP color = CreateDIBSection(screen, reinterpret_cast<BITMAPINFO*>(&info), DIB_RGB_COLORS, &bits, nullptr, 0);
+    ReleaseDC(nullptr, screen);
+    if (!color) return nullptr;
+    auto* out = static_cast<uint32_t*>(bits);
+    for (int y = 0; y < size; ++y) {
+        for (int x = 0; x < size; ++x) {  // nearest neighbour, centred, aspect kept
+            const int sx = left + (x * side / size) - (side - cw) / 2, sy = top + (y * side / size) - (side - ch) / 2;
+            uint32_t argb = 0;
+            if (sx >= left && sx <= right && sy >= top && sy <= bottom) {
+                const uint8_t i = px[size_t(sy * w + sx)];
+                if (i) argb = 0xFF000000u | uint32_t(app.palette[i].r) << 16 | uint32_t(app.palette[i].g) << 8 | app.palette[i].b;
+            }
+            out[y * size + x] = argb;
+        }
+    }
+    HBITMAP mask = CreateBitmap(size, size, 1, 1, nullptr);
+    ICONINFO ii = {TRUE, 0, 0, mask, color};
+    HICON icon = CreateIconIndirect(&ii);
+    DeleteObject(mask);
+    DeleteObject(color);
+    return icon;
+}
+
 // "Run CyberPest on startup?" (the original installer's StartUp group icon): a per-user
 // Run entry, toggled from the window's system menu.
 constexpr UINT kSysRunAtStartup = 0x0010;
@@ -385,6 +434,10 @@ int runWindow(HINSTANCE instance, int show) {
     AdjustWindowRectExForDpi(&rc, style, FALSE, 0, dpi);
     HWND hwnd = app.hwnd = CreateWindowW(L"CyberPest", L"CyberPest", style, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left,
                               rc.bottom - rc.top, nullptr, nullptr, instance, nullptr);
+    if (HICON big = makeIcon(GetSystemMetricsForDpi(SM_CXICON, GetDpiForWindow(hwnd))))
+        SendMessageW(hwnd, WM_SETICON, ICON_BIG, LPARAM(big));
+    if (HICON small = makeIcon(GetSystemMetricsForDpi(SM_CXSMICON, GetDpiForWindow(hwnd))))
+        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, LPARAM(small));
     HMENU system = GetSystemMenu(hwnd, FALSE);
     AppendMenuW(system, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(system, MF_STRING | (runsAtStartup() ? MF_CHECKED : MF_UNCHECKED), kSysRunAtStartup,
