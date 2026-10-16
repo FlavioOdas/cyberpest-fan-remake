@@ -91,6 +91,8 @@ public:
     // Mouse: returns the cursor id to show at (x, y) (0 = default).
     int32_t hover(int x, int y) const;
     void click(int x, int y, uint32_t nowMs);
+    // Delivers a message (type-0 event) to an object, as the -119 command does.
+    void send(int32_t target, int32_t message, uint32_t nowMs);
 
     Object* find(int32_t id);
     // Debug listing: one line per object (id, state, position, depth, image, frame).

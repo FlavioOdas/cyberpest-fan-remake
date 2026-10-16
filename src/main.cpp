@@ -24,6 +24,7 @@
 namespace {
 
 constexpr int kWidth = 640, kHeight = 480;
+constexpr int32_t kCertificate = -106, kNameAccepted = -203;
 constexpr int32_t kCursorTable = -58, kDefaultCursor = -59, kFrameScaleConfig = -49, kConfig = -42;
 
 struct Cursor {
@@ -170,6 +171,10 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         app.world.click(p.x, p.y, GetTickCount());
         return 0;
     }
+    case WM_CHAR:
+        // Stand-in until the certificate class (-593) is ported: Enter accepts the (unnamed) pest.
+        if (wp == VK_RETURN) app.world.send(kCertificate, kNameAccepted, GetTickCount());
+        return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;

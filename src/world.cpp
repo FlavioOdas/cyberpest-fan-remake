@@ -257,6 +257,10 @@ void World::sendEvent(Object& obj, int type, int32_t value, uint32_t nowMs) {
     }
 }
 
+void World::send(int32_t target, int32_t message, uint32_t nowMs) {
+    if (Object* o = find(target)) sendEvent(*o, 0, message, nowMs);
+}
+
 void World::runnerFinished(Object& obj, uint32_t nowMs) {
     Runner& r = *obj.runner;
     r.done = true;
