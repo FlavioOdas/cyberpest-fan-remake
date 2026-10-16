@@ -129,3 +129,19 @@ may be refused by Windows, the beep and flash still happen), IGNORE sends the ga
 to HWND_BOTTOM [inf: the original's insert-after argument was not decoded]. The files
 leave `biSizeImage` 0, which Win32 GDI rejects for RLE8, so it is filled in from the file
 size. `--snapshot x.bmp --popup <reason>` renders the pop-up headlessly.
+
+## Palette changes from FLCs (2026-10-17, Claude)
+
+`FUN_1020_b6be` is the screen's set-palette-entries routine (SelectPalette/RealizePalette,
+AnimatePalette on palette devices). Sprites call it when they start (`1028:c892`) or
+advance (`1028:ca78`) if the decoded FLC has a palette (+0x2a set, +0x2c clear); the app
+calls it at start-up (`1000:024c`) and the FLC loader `1020:af06`. [obs]
+
+Survey of all 578 FLCs in PEST.ADM [obs, `work/adm/files`]: every palette chunk is a
+COLOR_256 chunk in frame 0 only; 22 FLCs (BLANK*, the TV postcards such as ARIZONA,
+ATHENS …) carry exactly PALETTE.BMP; 555 share one placeholder palette whose entries
+54–255 are mostly pure green (0,255,0), which would visibly ruin the room if it were ever
+applied; CCPOINT2 is a cursor. So with this data there is no visible palette animation:
+the remake keeps one palette from PALETTE.BMP and ignores FLC palettes. [inf: that the
+placeholder palettes are never applied in the original, from the visual result; the
+exact meaning of the +0x2a/+0x2c flags was not decoded]
