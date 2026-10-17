@@ -34,6 +34,7 @@ private:
 
 // Writes an 8-bit indexed BMP (used by --snapshot to verify rendering headlessly).
 bool writeBmp(const wchar_t* path, const Surface& surface, const Palette& palette);
+bool writeBmp32(const wchar_t* path, const uint32_t* pixels, int width, int height);
 
 // Reads the colour table of an 8-bit BMP (the game's master palette is PALETTE.BMP).
 bool readBmpPalette(std::span<const uint8_t> bmp, Palette* out);

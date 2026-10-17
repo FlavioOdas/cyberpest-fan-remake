@@ -14,9 +14,9 @@ namespace attention {
 // Shows the pop-up for a reason picture id (-600 bored, -601 hungry, -223 ill, -222 rabies,
 // -221 fleas, -602 too late, -603 constipated) unless one is already up or the game window
 // is the active one. Returns whether it was shown.
-bool request(HWND mainWindow, const adm::Database& db, int32_t reason);
+bool request(HWND mainWindow, const adm::Database& db, int32_t reason, bool smoothGraphics);
 
-// Headless check: draws the pop-up for a reason into a 24-bit BMP file.
-bool snapshot(const adm::Database& db, int32_t reason, const wchar_t* path);
+// Headless check: draws the pop-up for a reason into a BMP file.
+bool snapshot(const adm::Database& db, int32_t reason, const wchar_t* path, bool smoothGraphics);
 
 }  // namespace attention

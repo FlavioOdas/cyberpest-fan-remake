@@ -19,12 +19,28 @@ grep -E "warning" work/build.log | head -10 || true
 python3 - <<'PY'
 import struct, sys
 sys.path.insert(0, "tools")
-from png import write_indexed
+from png import write_indexed, write_rgb
 b = open("work/test/snap.bmp", "rb").read()
 w, h = struct.unpack_from("<ii", b, 18)
 off = struct.unpack_from("<I", b, 10)[0]
-pal = [(b[54 + 4 * i + 2], b[54 + 4 * i + 1], b[54 + 4 * i]) for i in range(256)]
-st = (w + 3) & ~3
-write_indexed("work/test/snap.png", w, h, b"".join(b[off + y * st:off + y * st + w] for y in reversed(range(h))), pal)
+bits = struct.unpack_from("<H", b, 28)[0]
+if bits == 8:
+    pal = [(b[54 + 4 * i + 2], b[54 + 4 * i + 1], b[54 + 4 * i]) for i in range(256)]
+    stride = (w + 3) & ~3
+    pixels = b"".join(b[off + y * stride:off + y * stride + w] for y in reversed(range(h)))
+    write_indexed("work/test/snap.png", w, h, pixels, pal)
+elif bits in (24, 32):
+    pixel_size = bits // 8
+    stride = (w * pixel_size + 3) & ~3
+    pixels = bytearray(w * h * 3)
+    for row in range(h):
+        source = b[off + (h - 1 - row) * stride:off + (h - row) * stride]
+        target = memoryview(pixels)[row * w * 3:(row + 1) * w * 3]
+        target[0::3] = source[2:w * pixel_size:pixel_size]
+        target[1::3] = source[1:w * pixel_size:pixel_size]
+        target[2::3] = source[0:w * pixel_size:pixel_size]
+    write_rgb("work/test/snap.png", w, h, pixels)
+else:
+    raise ValueError(f"unsupported snapshot BMP depth: {bits}")
 print("work/test/snap.png", w, h)
 PY

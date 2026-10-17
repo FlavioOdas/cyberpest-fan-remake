@@ -40,6 +40,12 @@ a newborn pest.
 **Run when Windows starts:** right-click the title bar (or press Alt+Space) and tick
 *Run CyberPest when Windows starts*, the same option the original installer offered.
 
+**Graphics:** *Smooth graphics (HD)* is enabled by default. It enlarges the original
+game picture with deterministic edge-aware pixel scaling, including the room, sprites,
+text, cursor and emergency pop-up. It does not generate or replace artwork: the game
+still reads your unchanged `PEST.ADM`. To see the original sharp pixels, untick it in
+the title-bar menu (Alt+Space), or launch with `--classic` (`--hd` forces smoothing).
+
 When the pest needs you while you're using another program, a *CyberPest Emergency* window
 pops up: **Attend** brings the game back, **Ignore** returns you to what you were doing.
 
@@ -77,7 +83,7 @@ Extroversion=-1
 - **The phone**: all five callers (Pesterminator, Pestkeeper, Pestrologer, TheraPest, Vet)
   with their first-call and repeat-call routines.
 - **Desktop integration**: the *CyberPest Emergency* pop-up over other applications, per-monitor
-  DPI scaling with a crisp 4:3 picture, launch options (minimised/maximised), and the
+  DPI scaling with an optional classic 4:3 picture, launch options (minimised/maximised), and the
   "run when Windows starts" switch.
 - **Your save** in a plain-text `%APPDATA%\CyberPest\PEST.CFG` (the original save format stays
   untouched; this one is the remake's own).

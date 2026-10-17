@@ -15,6 +15,7 @@
 //                       %APPDATA%\CyberPest\PEST.ADM), then exit
 //   --download-ia       download the original game from the Internet Archive into --out
 //                       (default %APPDATA%\CyberPest\PEST.ADM), then exit
+//   --hd / --classic     choose deterministic smoothing or original pixels
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -38,6 +39,7 @@
 #include "flc.h"
 #include "surface.h"
 #include "symbols.h"
+#include "upscale.h"
 #include "world.h"
 
 namespace {
@@ -55,6 +57,8 @@ struct App {
     adm::Database db;
     Palette palette{};
     Surface screen{kWidth, kHeight};
+    HdScaler hdScaler;
+    bool smoothGraphics = true;
     World world;
     Mixer mixer;
     std::unordered_map<int32_t, Cursor> cursors;
@@ -175,7 +179,9 @@ bool loadGame(const std::wstring& admPath) {
     app.world.setSoundPlayer([](const Sound* s) { app.mixer.play(0, s); });
     app.world.setAudioHandler([](bool on) { app.mixer.setMuted(!on); });  // audio button -94
     readIniSettings();
-    app.world.setAttentionHandler([](int32_t reason) { attention::request(app.hwnd, app.db, reason); });
+    app.world.setAttentionHandler([](int32_t reason) {
+        attention::request(app.hwnd, app.db, reason, app.smoothGraphics);
+    });
     app.world.setAppMessageHandler([](int32_t message) {  // 1000:4768
         if (!app.hwnd) return;
         if (message == kAppClose) PostMessageW(app.hwnd, WM_CLOSE, 0, 0);
@@ -208,24 +214,14 @@ RECT gameRect(HWND hwnd) {
     RECT rc;
     GetClientRect(hwnd, &rc);
     double scale = std::min(double(rc.right) / kWidth, double(rc.bottom) / kHeight);
-    if (scale >= 1 && std::floor(scale) / scale >= 0.85) scale = std::floor(scale);
+    if (!app.smoothGraphics && scale >= 1 && std::floor(scale) / scale >= 0.85)
+        scale = std::floor(scale);
     const int w = int(kWidth * scale), h = int(kHeight * scale);
     const int left = (rc.right - w) / 2, top = (rc.bottom - h) / 2;
     return {left, top, left + w, top + h};
 }
 
 void present(HWND hwnd, HDC dc) {
-    struct {
-        BITMAPINFOHEADER header;
-        RGBQUAD colors[256];
-    } bmi = {};
-    bmi.header.biSize = sizeof bmi.header;
-    bmi.header.biWidth = kWidth;
-    bmi.header.biHeight = -kHeight;  // top-down
-    bmi.header.biPlanes = 1;
-    bmi.header.biBitCount = 8;
-    bmi.header.biClrUsed = 256;
-    for (int i = 0; i < 256; ++i) bmi.colors[i] = {app.palette[i].b, app.palette[i].g, app.palette[i].r, 0};
     const RECT to = gameRect(hwnd);
     RECT rc;
     GetClientRect(hwnd, &rc);
@@ -235,9 +231,37 @@ void present(HWND hwnd, HDC dc) {
     for (const RECT& bar : bars) {
         if (bar.right > bar.left && bar.bottom > bar.top) FillRect(dc, &bar, black);
     }
-    SetStretchBltMode(dc, COLORONCOLOR);
-    StretchDIBits(dc, to.left, to.top, to.right - to.left, to.bottom - to.top, 0, 0, kWidth, kHeight,
-                  app.screen.pixels(), reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS, SRCCOPY);
+    if (app.smoothGraphics) {
+        app.hdScaler.scale(app.screen.pixels(), kWidth, kHeight, app.palette);
+        BITMAPINFO bitmap = {};
+        bitmap.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bitmap.bmiHeader.biWidth = app.hdScaler.width();
+        bitmap.bmiHeader.biHeight = -app.hdScaler.height();
+        bitmap.bmiHeader.biPlanes = 1;
+        bitmap.bmiHeader.biBitCount = 32;
+        SetStretchBltMode(dc, HALFTONE);
+        SetBrushOrgEx(dc, 0, 0, nullptr);
+        StretchDIBits(dc, to.left, to.top, to.right - to.left, to.bottom - to.top,
+                      0, 0, app.hdScaler.width(), app.hdScaler.height(),
+                      app.hdScaler.pixels(), &bitmap, DIB_RGB_COLORS, SRCCOPY);
+    } else {
+        struct {
+            BITMAPINFOHEADER header;
+            RGBQUAD colors[256];
+        } bitmap = {};
+        bitmap.header.biSize = sizeof bitmap.header;
+        bitmap.header.biWidth = kWidth;
+        bitmap.header.biHeight = -kHeight;
+        bitmap.header.biPlanes = 1;
+        bitmap.header.biBitCount = 8;
+        bitmap.header.biClrUsed = 256;
+        for (int index = 0; index < 256; ++index)
+            bitmap.colors[index] = {app.palette[index].b, app.palette[index].g, app.palette[index].r, 0};
+        SetStretchBltMode(dc, COLORONCOLOR);
+        StretchDIBits(dc, to.left, to.top, to.right - to.left, to.bottom - to.top,
+                      0, 0, kWidth, kHeight, app.screen.pixels(),
+                      reinterpret_cast<BITMAPINFO*>(&bitmap), DIB_RGB_COLORS, SRCCOPY);
+    }
 }
 
 // Window icon drawn from the pest's standing sprite in the player's PEST.ADM (the original
@@ -292,6 +316,7 @@ HICON makeIcon(int size) {
 // "Run CyberPest on startup?" (the original installer's StartUp group icon): a per-user
 // Run entry, toggled from the window's system menu.
 constexpr UINT kSysRunAtStartup = 0x0010;
+constexpr UINT kSysSmoothGraphics = 0x0020;
 constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
 bool runsAtStartup() {
@@ -373,6 +398,12 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         break;
     }
     case WM_SYSCOMMAND:
+        if ((wp & 0xFFF0) == kSysSmoothGraphics) {
+            app.smoothGraphics = !app.smoothGraphics;
+            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysSmoothGraphics,
+                          MF_BYCOMMAND | (app.smoothGraphics ? MF_CHECKED : MF_UNCHECKED));
+            return 0;
+        }
         if ((wp & 0xFFF0) == kSysRunAtStartup) {
             setRunAtStartup(!runsAtStartup());
             CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysRunAtStartup,
@@ -424,7 +455,7 @@ int runWindow(HINSTANCE instance, int show) {
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
     const double room = std::min((work.right - work.left) * 0.9 / kWidth, (work.bottom - work.top) * 0.9 / kHeight);
     const UINT dpi = GetDpiForSystem();
-    double scale = std::max(1.0, std::floor(room));
+    double scale = app.smoothGraphics ? std::max(1.0, room) : std::max(1.0, std::floor(room));
     if (dpi / 96.0 > scale && dpi / 96.0 <= room) scale = dpi / 96.0;
     const DWORD style = WS_OVERLAPPEDWINDOW;
     RECT rc = {0, 0, LONG(kWidth * scale), LONG(kHeight * scale)};
@@ -439,10 +470,13 @@ int runWindow(HINSTANCE instance, int show) {
     AppendMenuW(system, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(system, MF_STRING | (runsAtStartup() ? MF_CHECKED : MF_UNCHECKED), kSysRunAtStartup,
                 L"Run CyberPest when Windows starts");
+    AppendMenuW(system, MF_STRING | (app.smoothGraphics ? MF_CHECKED : MF_UNCHECKED), kSysSmoothGraphics,
+                L"Smooth graphics (HD)");
     ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
 
     MSG msg;
+    DWORD lastPresented = 0;
     for (;;) {
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
@@ -454,10 +488,13 @@ int runWindow(HINSTANCE instance, int show) {
         }
         const DWORD now = GetTickCount();
         app.world.tick(now);
-        compose(now);
-        HDC dc = GetDC(hwnd);
-        present(hwnd, dc);
-        ReleaseDC(hwnd, dc);
+        if (!app.smoothGraphics || now - lastPresented >= 33) {
+            compose(now);
+            HDC dc = GetDC(hwnd);
+            present(hwnd, dc);
+            ReleaseDC(hwnd, dc);
+            lastPresented = now;
+        }
         MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
     }
 }
@@ -515,6 +552,10 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
     }
     compose(duration);
     if (dump) std::fputs(app.world.describe().c_str(), stdout);
+    if (app.smoothGraphics) {
+        app.hdScaler.scale(app.screen.pixels(), kWidth, kHeight, app.palette);
+        return writeBmp32(path.c_str(), app.hdScaler.pixels(), app.hdScaler.width(), app.hdScaler.height()) ? 0 : 2;
+    }
     return writeBmp(path.c_str(), app.screen, app.palette) ? 0 : 2;
 }
 
@@ -532,12 +573,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     std::vector<TypedText> typed;
     bool dump = false;
     bool downloadIa = false;
+    int smoothOption = -1;
     int popupReason = 0;
     DWORD activateAt = 0;
     for (int i = 1; i < argc; ++i) {
         const std::wstring key = argv[i];
         if (key == L"--dump") {
             dump = true;
+            continue;
+        }
+        if (key == L"--hd" || key == L"--classic") {
+            smoothOption = key == L"--hd" ? 1 : 0;
             continue;
         }
         if (key == L"--download-ia") {
@@ -570,6 +616,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         }
     }
     LocalFree(argv);
+    app.smoothGraphics = smoothOption < 0 ? snapshot.empty() : smoothOption != 0;
     if (!importSource.empty()) {
         std::wstring error;
         if (importTarget.empty()) importTarget = gamedata::dataDirectory() + L"\\PEST.ADM";
@@ -605,7 +652,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         return 1;
     }
     if (!snapshot.empty() && popupReason)
-        return attention::snapshot(app.db, popupReason, snapshot.c_str()) ? 0 : 1;
+        return attention::snapshot(app.db, popupReason, snapshot.c_str(), app.smoothGraphics) ? 0 : 1;
     if (!snapshot.empty())  // unseeded rand: snapshots are reproducible
         return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump,
                            activateAt);

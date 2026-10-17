@@ -27,6 +27,7 @@ add_executable(cyberpest WIN32
     src/adm.cpp
     src/flc.cpp
     src/surface.cpp
+    src/upscale.cpp
     src/audio.cpp
     src/wav.cpp
 )

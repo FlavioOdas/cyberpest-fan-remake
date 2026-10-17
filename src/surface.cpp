@@ -179,3 +179,24 @@ bool writeBmp(const wchar_t* path, const Surface& surface, const Palette& palett
     }
     return fclose(f) == 0;
 }
+
+bool writeBmp32(const wchar_t* path, const uint32_t* pixels, int width, int height) {
+    const uint32_t imageSize = uint32_t(width) * uint32_t(height) * 4;
+    uint8_t header[54] = {'B', 'M'};
+    auto put32 = [&](int offset, uint32_t value) { std::memcpy(header + offset, &value, 4); };
+    auto put16 = [&](int offset, uint16_t value) { std::memcpy(header + offset, &value, 2); };
+    put32(2, uint32_t(sizeof header) + imageSize);
+    put32(10, sizeof header);
+    put32(14, 40);
+    put32(18, uint32_t(width));
+    put32(22, uint32_t(height));
+    put16(26, 1);
+    put16(28, 32);
+    put32(34, imageSize);
+    FILE* file = _wfopen(path, L"wb");
+    if (!file) return false;
+    fwrite(header, 1, sizeof header, file);
+    for (int row = height - 1; row >= 0; --row)
+        fwrite(pixels + size_t(row) * width, 4, size_t(width), file);
+    return fclose(file) == 0;
+}
