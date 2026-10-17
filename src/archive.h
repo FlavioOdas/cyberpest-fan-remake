@@ -1,7 +1,7 @@
 // The first-run option to fetch the original game from the Internet Archive. The remake
 // itself never contains or ships the game: this does the same download a player would do
 // in a browser, only after they pick it, and copies the game data into %APPDATA%\CyberPest.
-// The item, size and SHA-1 were identified on 2026-10-17 (docs/CHECKPOINTS.md).
+// The item, size and SHA-1 were identified on 2026-10-17.
 #pragma once
 
 #include <string>

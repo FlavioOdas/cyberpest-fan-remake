@@ -3,6 +3,9 @@
 /original/
 /work/
 
+# Private working log (agent checkpoints). Never committed:
+docs/CHECKPOINTS.md
+
 # Build output
 /build/
 *.exe

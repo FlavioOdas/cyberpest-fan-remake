@@ -1,7 +1,13 @@
 # The pest (class -105, module -105, vtable `1038:3f9a`)
 
 Source: the 96 functions reachable from the pest's vtable overrides (segment 2, `1008:*`).
-Regenerate the readable listing with the command in CHECKPOINTS (→ `work/pest_norm.c`).
+Regenerate the readable listing (→ `work/pest_norm.c`):
+
+```bash
+python3 tools/callgraph.py --seg 2 sub_2_0000 sub_2_56e8 sub_2_571c sub_2_57d6 sub_2_583c \
+  sub_2_69b2 sub_2_5b54 | awk '{print $1}' | xargs python3 tools/gfunc.py \
+  | python3 tools/normalize_c.py > work/pest_norm.c
+```
 Port target: `src/pest.*`.
 
 ## Hooks overridden
@@ -75,6 +81,13 @@ s), `f_128/12a/12c`=-415 5,10,20, `f_12e/130`=-416 25,75 (stomach bands), `f_132
 - **Entrance**: top-level property -322=1 means visible. Hatch message -153 sets mode 2 and
   enters -324; the ordinary walk logic brings the pest from x=-100 into the room. See
   `engine-runtime.md` for the visibility correction and original drawing evidence.
+- **Clicking vs. dragging**: the original pest reacts to a hit-area click through
+  `1008:5b54`, but does not become held for dragging. Base creation `1000:5e1a` initializes
+  pickable field +0xb6 to zero; module -105 never sets property -180 (the +0xb6 setter);
+  and base `1000:6e5c` starts holding only when +0xb6 is nonzero. A fresh headless drag
+  at (145,270) after the hatch focused the pest and hit area -114, while -180 and held
+  remained zero. Food -338 moved under the same drag harness. [obs: original code/data
+  and remake runtime; no evidence that the original allowed user-dragging the pest]
 - **Birth** (`8a3e`, `8d28`, `8dca`): newborn GoodStomach defaults to 50 (`1000:2d9a`
   supplies the INI default); other body defaults are zero. Module -380 has one two-int
   Neuroticism/Extroversion row per birth hour, indexed by hour-1 without scaling. The

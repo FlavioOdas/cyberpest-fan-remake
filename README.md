@@ -1,10 +1,20 @@
 # CyberPest for modern Windows
 
-A native Windows 10/11 remake of the engine of **CyberPest** (1996, Scratch 'n' Sniff /
-EMG), the 16-bit Windows 3.1 desktop pet. It runs the original game data unchanged, with no
-emulator or extra software. The game's art, sounds and texts are not included: you need the
-original CyberPest game files (the CD or installer). On first run the remake can download a
-preserved copy from the Internet Archive for you, or you can point it at your own.
+> A fan project, made for fun. No profit, no ads, no donations, no affiliation with the
+> original authors — just a 1996 desktop pet that deserves to keep living on modern Windows.
+
+A native Windows 10/11 remake of the engine of **CyberPest** (1996, Scratch 'n' Sniff / EMG),
+the 16-bit Windows 3.1 desktop pet. Rather than emulating Windows 3.1, the remake rebuilds the
+game's engine in C++ and runs the **original game data unchanged** — the same animations,
+sounds and text, read from the `PEST.ADM` produced by your own copy of the game. One `.exe`,
+no emulator, no installer, no extra software.
+
+The game's art, sounds and texts are **not included**: you need the original CyberPest game
+files (the CD or installer). On first run the remake can download a preserved copy from the
+Internet Archive for you, or import files you already have.
+
+**Download:** grab the zip from the [Releases page](https://github.com/FlavioOdas/cyberpest-fan-remake/releases/latest),
+unzip it anywhere and run `cyberpest.exe`.
 
 ## Playing
 
@@ -56,6 +66,22 @@ Neuroticism=-1    ; overrides the birth personality (the game's own range is 100
 Extroversion=-1
 ```
 
+## What the remake covers
+
+- **The room**, built from the game's own data: door, light, electrical outlet, the wall clock
+  with the local time and the top-of-hour cuckoo, bin, shelf and ornaments, toys, food, pills,
+  potion, powder, buttons, cursors and sounds — all interactive.
+- **A pest that behaves like the original**: walking and turning, moods, hunger, hygiene,
+  fleas, rabies, heat, the birth certificate with your typed name, food/toy preferences by
+  birth hour, reward and punishment, megaphone word learning, and the window it lives in.
+- **The phone**: all five callers (Pesterminator, Pestkeeper, Pestrologer, TheraPest, Vet)
+  with their first-call and repeat-call routines.
+- **Desktop integration**: the *CyberPest Emergency* pop-up over other applications, per-monitor
+  DPI scaling with a crisp 4:3 picture, launch options (minimised/maximised), and the
+  "run when Windows starts" switch.
+- **Your save** in a plain-text `%APPDATA%\CyberPest\PEST.CFG` (the original save format stays
+  untouched; this one is the remake's own).
+
 ## Building
 
 C++20 with CMake and a MinGW-w64 or MSVC toolchain. The repository's scripts cross-compile
@@ -66,13 +92,36 @@ cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/llvm-mingw.cmake -DCMAKE_BUILD_
 cmake --build build -j
 ```
 
-Command-line options for testing (headless snapshots, simulated clicks, data import) are
-listed at the top of `src/main.cpp`.
+Command-line options for testing (headless snapshots, simulated clicks and typing, data
+import, Internet Archive fetch) are listed at the top of `src/main.cpp`; `tools/snap.sh`
+builds and runs the game headlessly with scripted input. `tools/package.sh [version]` builds
+the release zip.
 
 ## How it was made
 
-The original `PEST.EXE` (Win16, MFC 2.x) was reverse engineered with Ghidra and custom NE
-tools; the remake mirrors its object model and per-class behaviour, citing the original
-function for each method. Start with `AGENTS.md`, `docs/PLAN.md` and `docs/CHECKPOINTS.md`;
-format and code notes are in `docs/formats/` and `docs/re/`. No original game files or
-assets are in this repository.
+The original `PEST.EXE` is a 16-bit NE executable (statically linked MFC 2.x, WinG graphics,
+WaveMix16 sound) with no source available. It was reverse engineered with Ghidra and custom
+NE/ADM analysis tools; the remake mirrors the original object model and ports each behaviour
+from the decompiled function, recording the original address for every method. The story —
+from unpacking the InstallShield media to decoding `PEST.ADM`, making the decompiler usable,
+porting behaviour function by function and testing it headlessly — is told in
+[`docs/MAKING-OF.md`](https://github.com/FlavioOdas/cyberpest-fan-remake/blob/main/docs/MAKING-OF.md).
+
+Where the knowledge lives:
+
+- [`docs/MAKING-OF.md`](https://github.com/FlavioOdas/cyberpest-fan-remake/blob/main/docs/MAKING-OF.md) — how the remake was achieved
+- [`docs/PLAN.md`](https://github.com/FlavioOdas/cyberpest-fan-remake/blob/main/docs/PLAN.md) — architecture and milestones
+- [`docs/formats/`](https://github.com/FlavioOdas/cyberpest-fan-remake/tree/main/docs/formats) — `PEST.ADM`, `DATA.Z`, `PEST.EXE` formats
+- [`docs/re/`](https://github.com/FlavioOdas/cyberpest-fan-remake/tree/main/docs/re) — code findings: runtime, state commands, classes, pest
+- [`AGENTS.md`](https://github.com/FlavioOdas/cyberpest-fan-remake/blob/main/AGENTS.md) — toolchain and how to regenerate the analysis
+
+## Repository layout
+
+- `src/` — the remake (C++20, Win32; builds to one self-contained exe)
+- `tools/` — reverse-engineering, extraction and test tools (Python standard library only)
+- `docs/` — plan, making-of, format and code notes
+- `original/` and `work/` — local, gitignored: your game copy's extracted files and generated
+  analysis output. Neither is ever committed.
+
+This is an unofficial fan project, not affiliated with the original authors. No original game
+files or assets are part of this repository; players import their own.

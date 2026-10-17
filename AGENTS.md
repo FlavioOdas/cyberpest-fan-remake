@@ -8,7 +8,8 @@ user's original data file (`PEST.ADM`) at runtime.
 ## Start here (every session)
 
 1. Read `docs/CHECKPOINTS.md` — the **current state** section and the last log entry tell
-   you exactly where work stopped and what to do next.
+   you exactly where work stopped and what to do next. It is a **local working log**:
+   gitignored, never committed (create it if missing).
 2. Read `docs/PLAN.md` for milestones and the architecture decision.
 3. Format/code findings live in `docs/formats/` and `docs/re/`.
 
@@ -23,8 +24,9 @@ user's original data file (`PEST.ADM`) at runtime.
 - Every finding goes in a doc with how it was established (observed in bytes, inferred,
   or unknown). Do not present guesses as facts.
 - **Checkpoint discipline:** after each meaningful step, append a dated entry to
-  `docs/CHECKPOINTS.md` and update its "Current state" section, then commit locally.
-  Do not push unless the user asks.
+  `docs/CHECKPOINTS.md` and update its "Current state" section. The file is gitignored and
+  must never be committed — it is a private working log. Commit the code/docs it describes;
+  do not push unless the user asks.
 - REA/Hopper cannot open 16-bit NE executables. Use `tools/ne_disasm.py` (objdump `-m i8086`,
   relocations resolved to API names) and Ghidra headless (`tools/ghidra/`, output in `work/ghidra/`).
 
@@ -52,7 +54,7 @@ Ghidra selector = 0x1000 + 8*(segment-1); `sub_<seg>_<off>` labels come from `to
 ## Layout
 
 - `tools/` — RE and extraction tools (stdlib Python)
-- `docs/` — plan, checkpoints, format and code notes
+- `docs/` — plan, making-of, format and code notes (`CHECKPOINTS.md` is a local, gitignored working log)
 - `src/` — the remake (C++20, Win32, CMake); `README.md` is the player-facing guide
 - `original/` — gitignored: `installer/` (zip contents) and `extracted/` (installed files)
 - `work/` — gitignored: generated disassembly, dumped assets, scratch output
