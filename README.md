@@ -9,9 +9,11 @@ game's engine in C++ and runs the **original game data unchanged** — the same 
 sounds and text, read from the `PEST.ADM` produced by your own copy of the game. One `.exe`,
 no emulator, no installer, no extra software.
 
-The game's art, sounds and texts are **not included**: you need the original CyberPest game
-files (the CD or installer). On first run the remake can download a preserved copy from the
-Internet Archive for you, or import files you already have.
+The original game's data files, sounds and texts are **not included**: you need the original
+CyberPest game files (the CD or installer). An optional experimental visual mod includes
+a small amount of hand-corrected fan art; it cannot replace the original data. On first
+run the remake can download a preserved copy from the Internet Archive for you, or import
+files you already have.
 
 **Download:** grab the zip from the [Releases page](https://github.com/FlavioOdas/cyberpest-fan-remake/releases/latest),
 unzip it anywhere and run `cyberpest.exe`.
@@ -45,6 +47,12 @@ game picture with deterministic edge-aware pixel scaling, including the room, sp
 text, cursor and emergency pop-up. It does not generate or replace artwork: the game
 still reads your unchanged `PEST.ADM`. To see the original sharp pixels, untick it in
 the title-bar menu (Alt+Space), or launch with `--classic` (`--hd` forces smoothing).
+
+**Experimental art mod (work in progress):** Alt+Space → *Experimental hand-fitted art mod*
+or `--mod` adds hand-corrected artwork on top of Smooth HD. This is an unofficial,
+for-fun mod—not an automatic filter or a finished remaster. So far it replaces only the
+room's idle megaphone. All other art remains Smooth HD, and the original `PEST.ADM` is
+still required. The emergency pop-up currently uses Smooth HD in this mode.
 
 When the pest needs you while you're using another program, a *CyberPest Emergency* window
 pops up: **Attend** brings the game back, **Ignore** returns you to what you were doing.
@@ -126,8 +134,10 @@ Where the knowledge lives:
 - `src/` — the remake (C++20, Win32; builds to one self-contained exe)
 - `tools/` — reverse-engineering, extraction and test tools (Python standard library only)
 - `docs/` — plan, making-of, format and code notes
+- `mods/experimental/` — optional, hand-fitted mod artwork embedded in the exe
 - `original/` and `work/` — local, gitignored: your game copy's extracted files and generated
   analysis output. Neither is ever committed.
 
-This is an unofficial fan project, not affiliated with the original authors. No original game
-files or assets are part of this repository; players import their own.
+This is an unofficial fan project, not affiliated with the original authors. Original game
+files are not part of this repository; players import their own. The experimental mod art
+is a small, separately identified fan-made derivative—not official CyberPest artwork.

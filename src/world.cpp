@@ -186,7 +186,8 @@ void World::draw(Surface& target, const Palette& palette) const {
         Vec3 off = s.offset;
         if (o->facing()) off.x = -off.x;
         const Vec3 p = o->position() + off;
-        target.blit(f.frames()[size_t(frame)].data(), f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(), 0);
+        target.blit(f.frames()[size_t(frame)].data(), f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(),
+                    0, false, s.name.c_str());
         o->drawOverlay(target, palette);
     }
 }

@@ -15,7 +15,7 @@
 //                       %APPDATA%\CyberPest\PEST.ADM), then exit
 //   --download-ia       download the original game from the Internet Archive into --out
 //                       (default %APPDATA%\CyberPest\PEST.ADM), then exit
-//   --hd / --classic     choose deterministic smoothing or original pixels
+//   --hd / --classic / --mod    choose smoothing, original pixels, or the experimental art mod
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -37,6 +37,7 @@
 #include "pest.h"
 #include "audio.h"
 #include "flc.h"
+#include "mod.h"
 #include "surface.h"
 #include "symbols.h"
 #include "upscale.h"
@@ -59,6 +60,7 @@ struct App {
     Surface screen{kWidth, kHeight};
     HdScaler hdScaler;
     bool smoothGraphics = true;
+    bool experimentalMod = false;
     World world;
     Mixer mixer;
     std::unordered_map<int32_t, Cursor> cursors;
@@ -195,6 +197,7 @@ bool loadGame(const std::wstring& admPath) {
 }
 
 void compose(DWORD now) {
+    app.screen.setExperimentalMod(app.experimentalMod);
     app.screen.fill(0);
     app.world.draw(app.screen, app.palette);
     const Point2 mouse = app.world.mouse();
@@ -233,6 +236,8 @@ void present(HWND hwnd, HDC dc) {
     }
     if (app.smoothGraphics) {
         app.hdScaler.scale(app.screen.pixels(), kWidth, kHeight, app.palette);
+        if (app.experimentalMod)
+            applyExperimentalMod(app.screen, app.palette, app.hdScaler.mutablePixels());
         BITMAPINFO bitmap = {};
         bitmap.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
         bitmap.bmiHeader.biWidth = app.hdScaler.width();
@@ -317,6 +322,7 @@ HICON makeIcon(int size) {
 // Run entry, toggled from the window's system menu.
 constexpr UINT kSysRunAtStartup = 0x0010;
 constexpr UINT kSysSmoothGraphics = 0x0020;
+constexpr UINT kSysExperimentalMod = 0x0030;
 constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
 bool runsAtStartup() {
@@ -400,6 +406,17 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_SYSCOMMAND:
         if ((wp & 0xFFF0) == kSysSmoothGraphics) {
             app.smoothGraphics = !app.smoothGraphics;
+            app.experimentalMod = false;
+            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysSmoothGraphics,
+                          MF_BYCOMMAND | (app.smoothGraphics ? MF_CHECKED : MF_UNCHECKED));
+            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysExperimentalMod, MF_BYCOMMAND | MF_UNCHECKED);
+            return 0;
+        }
+        if ((wp & 0xFFF0) == kSysExperimentalMod) {
+            app.experimentalMod = !app.experimentalMod;
+            if (app.experimentalMod) app.smoothGraphics = true;
+            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysExperimentalMod,
+                          MF_BYCOMMAND | (app.experimentalMod ? MF_CHECKED : MF_UNCHECKED));
             CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysSmoothGraphics,
                           MF_BYCOMMAND | (app.smoothGraphics ? MF_CHECKED : MF_UNCHECKED));
             return 0;
@@ -472,6 +489,8 @@ int runWindow(HINSTANCE instance, int show) {
                 L"Run CyberPest when Windows starts");
     AppendMenuW(system, MF_STRING | (app.smoothGraphics ? MF_CHECKED : MF_UNCHECKED), kSysSmoothGraphics,
                 L"Smooth graphics (HD)");
+    AppendMenuW(system, MF_STRING | (app.experimentalMod ? MF_CHECKED : MF_UNCHECKED), kSysExperimentalMod,
+                L"Experimental hand-fitted art mod (WIP)");
     ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
 
@@ -554,6 +573,8 @@ int runSnapshot(const std::wstring& path, DWORD duration, std::vector<Click> cli
     if (dump) std::fputs(app.world.describe().c_str(), stdout);
     if (app.smoothGraphics) {
         app.hdScaler.scale(app.screen.pixels(), kWidth, kHeight, app.palette);
+        if (app.experimentalMod)
+            applyExperimentalMod(app.screen, app.palette, app.hdScaler.mutablePixels());
         return writeBmp32(path.c_str(), app.hdScaler.pixels(), app.hdScaler.width(), app.hdScaler.height()) ? 0 : 2;
     }
     return writeBmp(path.c_str(), app.screen, app.palette) ? 0 : 2;
@@ -582,8 +603,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             dump = true;
             continue;
         }
-        if (key == L"--hd" || key == L"--classic") {
-            smoothOption = key == L"--hd" ? 1 : 0;
+        if (key == L"--hd" || key == L"--classic" || key == L"--mod") {
+            smoothOption = key == L"--classic" ? 0 : key == L"--hd" ? 1 : 2;
             continue;
         }
         if (key == L"--download-ia") {
@@ -617,6 +638,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
     LocalFree(argv);
     app.smoothGraphics = smoothOption < 0 ? snapshot.empty() : smoothOption != 0;
+    app.experimentalMod = smoothOption == 2;
     if (!importSource.empty()) {
         std::wstring error;
         if (importTarget.empty()) importTarget = gamedata::dataDirectory() + L"\\PEST.ADM";

@@ -15,9 +15,12 @@ user's original data file (`PEST.ADM`) at runtime.
 
 ## Ground rules
 
-- **Never commit original game files or anything extracted/derived from them** (EXE,
-  DLLs, PEST.ADM, decoded sprites, WAVs, full disassembly listings). They live in
-  `original/` and `work/`, both gitignored. Short quotes of disassembly in docs are fine.
+- **Experimental visual mod:** Hand-authored vector corrections and their rendered mod
+  resources may be committed under `mods/experimental/`. This is an unofficial,
+  for-fun experiment, not a claim of original authorship or an official remaster.
+  Keep the unmodified game files and bulk extractions (EXE, DLLs, PEST.ADM, decoded
+  sprite dumps, WAVs, full disassembly) in ignored `original/` and `work/`. The exe
+  must still require the player's original PEST.ADM; never bundle it with the mod.
 - If `original/` is missing, run `tools/bootstrap.sh` (needs the user's
   `CyberPest.zip`, default `/mnt/c/Users/odasf/Downloads/CyberPest.zip`).
 - Python tooling must use the **standard library only** (no pip available on this machine).

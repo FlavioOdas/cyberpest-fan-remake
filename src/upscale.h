@@ -14,6 +14,7 @@ public:
     int width() const { return width_; }
     int height() const { return height_; }
     const uint32_t* pixels() const { return pixels_.data(); }
+    uint32_t* mutablePixels() { return pixels_.data(); }
 
 private:
     int width_ = 0;

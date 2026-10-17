@@ -7,7 +7,11 @@
 #include <cstdio>
 #include <cstring>
 
-void Surface::fill(uint8_t index) { std::fill(pixels_.begin(), pixels_.end(), index); }
+void Surface::fill(uint8_t index) {
+    std::fill(pixels_.begin(), pixels_.end(), index);
+    modRegion_ = {};
+    modLaterBlits_.clear();
+}
 
 void Surface::fillRect(int left, int top, int right, int bottom, uint8_t index) {
     for (int y = std::max(0, top); y < std::min(height_, bottom); ++y) {
@@ -108,7 +112,15 @@ void Surface::drawText(const std::string& value, int left, int top, int right, i
     DeleteDC(dc);
 }
 
-void Surface::blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent, bool mirror) {
+void Surface::blit(const uint8_t* src, int srcWidth, int srcHeight, int x, int y, int transparent,
+                   bool mirror, const char* assetName) {
+    if (experimentalMod_ && assetName && std::strcmp(assetName, "MEGA.FLC") == 0 &&
+        srcWidth == 120 && srcHeight == 120 && !modRegion_.width) {
+        modUnderlay_ = pixels_;
+        modRegion_ = {x, y, srcWidth, srcHeight};
+    } else if (modRegion_.width) {
+        modLaterBlits_.push_back({src, srcWidth, srcHeight, x, y, transparent, mirror});
+    }
     const int x0 = std::max(0, x), y0 = std::max(0, y);
     const int x1 = std::min(width_, x + srcWidth), y1 = std::min(height_, y + srcHeight);
     if (mirror) {
