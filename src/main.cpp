@@ -19,8 +19,6 @@
 //   --hd / --classic / --mod    choose smoothing, original pixels, or the experimental art mod
 //   --60fps            experimental: 60 presentations per second and render-only in-between
 //                      positions for moving objects (original animation timing unchanged)
-//   --gen-anim         experimental: generate in-between character poses between the original
-//                      animation frames (original frame timing, cues and saves unchanged)
 //   --fps-log <path>    write one CSV line per presented frame (live run, scripted --click
 //                       events replay, mixer muted) and exit after --time
 #include <windows.h>
@@ -71,7 +69,6 @@ struct App {
     bool smoothGraphics = true;
     bool experimentalMod = false;
     bool highFrameRate = false;
-    bool genAnim = false;
     bool highResolutionTimer = false;
     World world;
     Mixer mixer;
@@ -336,7 +333,6 @@ constexpr UINT kSysRunAtStartup = 0x0010;
 constexpr UINT kSysSmoothGraphics = 0x0020;
 constexpr UINT kSysExperimentalMod = 0x0030;
 constexpr UINT kSysHighFrameRate = 0x0040;
-constexpr UINT kSysGenAnim = 0x0050;
 constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
 void setHighFrameRate(bool enabled) {
@@ -349,11 +345,6 @@ void setHighFrameRate(bool enabled) {
     }
     app.highFrameRate = enabled;
     app.world.setSmoothAnimation(enabled);  // render-only; original animation timing is untouched
-}
-
-void setGenAnim(bool enabled) {
-    app.genAnim = enabled;
-    app.world.setMorphAnimation(enabled);  // render-only; frame indices and timing untouched
 }
 
 bool runsAtStartup() {
@@ -458,12 +449,6 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                           MF_BYCOMMAND | (app.highFrameRate ? MF_CHECKED : MF_UNCHECKED));
             return 0;
         }
-        if ((wp & 0xFFF0) == kSysGenAnim) {
-            setGenAnim(!app.genAnim);
-            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysGenAnim,
-                          MF_BYCOMMAND | (app.genAnim ? MF_CHECKED : MF_UNCHECKED));
-            return 0;
-        }
         if ((wp & 0xFFF0) == kSysRunAtStartup) {
             setRunAtStartup(!runsAtStartup());
             CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysRunAtStartup,
@@ -557,8 +542,6 @@ int runWindow(HINSTANCE instance, int show, DWORD runForMs, const std::wstring& 
                 L"Experimental hand-fitted art mod (WIP)");
     AppendMenuW(system, MF_STRING | (app.highFrameRate ? MF_CHECKED : MF_UNCHECKED), kSysHighFrameRate,
                 L"60 FPS animation (experimental, WIP)");
-    AppendMenuW(system, MF_STRING | (app.genAnim ? MF_CHECKED : MF_UNCHECKED), kSysGenAnim,
-                L"Generated in-between animation (experimental, WIP)");
     ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
     if (!fpsLog.empty()) app.mixer.setMuted(true);  // a timing run stays quiet
@@ -710,7 +693,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool dump = false;
     bool downloadIa = false;
     bool highFrameRateOption = false;
-    bool genAnimOption = false;
     int smoothOption = -1;
     int popupReason = 0;
     DWORD activateAt = 0;
@@ -726,10 +708,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         }
         if (key == L"--60fps") {
             highFrameRateOption = true;
-            continue;
-        }
-        if (key == L"--gen-anim") {
-            genAnimOption = true;
             continue;
         }
         if (key == L"--download-ia") {
@@ -766,7 +744,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     app.smoothGraphics = smoothOption < 0 ? snapshot.empty() : smoothOption != 0;
     app.experimentalMod = smoothOption == 2;
     app.world.setSmoothAnimation(highFrameRateOption);  // render-only in-between frames
-    app.world.setMorphAnimation(genAnimOption);         // render-only generated poses
     if (!importSource.empty()) {
         std::wstring error;
         if (importTarget.empty()) importTarget = gamedata::dataDirectory() + L"\\PEST.ADM";
@@ -808,7 +785,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                            activateAt);
     std::srand(unsigned(std::time(nullptr)));  // as InitInstance does (1000:25dc)
     setHighFrameRate(highFrameRateOption);
-    setGenAnim(genAnimOption);
     // A live run with --fps-log ends after --time (ms) so timing can be measured unattended,
     // replaying any --click script (the hatch click, then the pest walks around).
     return runWindow(instance, show, fpsLogPath.empty() ? 0 : duration, fpsLogPath,

@@ -195,18 +195,6 @@ void World::draw(Surface& target, const Palette& palette) const {
         const bool smoothed = smoothAnimation_ && pose.smoothable() && !o->held() && pose.to == o->position();
         const Vec3 p = (smoothed ? pose.positionAt(now_) : o->position()) + off;
         const uint8_t* pixels = f.frames()[size_t(frame)].data();
-        // Experimental animation generation: draw the current pose moved towards the pose the
-        // logic shows at the next boundary, by the fraction of the frame's duration already
-        // elapsed. Render-only, same seam as the 60 FPS position interpolation above; only
-        // interior frame pairs (the animation wrap stays a hard cut for now), only for objects
-        // that opt in (the pest), and never while held.
-        if (morphAnimation_ && o->morphFrames() && !o->held() && pose.durationMs > 0 &&
-            frame + 1 < f.frameCount() - 1) {
-            if (const uint8_t* moved =
-                    morpher_.between(f, frame, frame + 1, pose.alpha(now_), morphScratch_)) {
-                pixels = moved;
-            }
-        }
         target.blit(pixels, f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(), 0, false,
                     s.name.c_str());
         o->drawOverlay(target, palette);

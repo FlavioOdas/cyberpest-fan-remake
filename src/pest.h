@@ -21,8 +21,6 @@ public:
     void onFrame() override;                             // 1008:69b2
     void onEvent(GameObject* from, int32_t value, int type) override;  // 1008:5b54
 
-    bool morphFrames() const override { return true; }  // experimental generated in-betweens
-
     // Debug/cheat access.
     std::string describeState() const;
     const std::string& name() const { return name_; }
