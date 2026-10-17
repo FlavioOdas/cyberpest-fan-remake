@@ -16,8 +16,10 @@
 //   --download-ia       download the original game from the Internet Archive into --out
 //                       (default %APPDATA%\CyberPest\PEST.ADM), then exit
 //   --hd / --classic / --mod    choose smoothing, original pixels, or the experimental art mod
+//   --60fps            target 60 presentations per second (original animation timing unchanged)
 #include <windows.h>
 #include <commdlg.h>
+#include <mmsystem.h>
 #include <shellapi.h>
 
 #include <algorithm>
@@ -61,6 +63,8 @@ struct App {
     HdScaler hdScaler;
     bool smoothGraphics = true;
     bool experimentalMod = false;
+    bool highFrameRate = false;
+    bool highResolutionTimer = false;
     World world;
     Mixer mixer;
     std::unordered_map<int32_t, Cursor> cursors;
@@ -323,7 +327,19 @@ HICON makeIcon(int size) {
 constexpr UINT kSysRunAtStartup = 0x0010;
 constexpr UINT kSysSmoothGraphics = 0x0020;
 constexpr UINT kSysExperimentalMod = 0x0030;
+constexpr UINT kSysHighFrameRate = 0x0040;
 constexpr wchar_t kRunKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+void setHighFrameRate(bool enabled) {
+    if (app.highFrameRate == enabled) return;
+    if (enabled) {
+        app.highResolutionTimer = timeBeginPeriod(1) == TIMERR_NOERROR;
+    } else if (app.highResolutionTimer) {
+        timeEndPeriod(1);
+        app.highResolutionTimer = false;
+    }
+    app.highFrameRate = enabled;
+}
 
 bool runsAtStartup() {
     return RegGetValueW(HKEY_CURRENT_USER, kRunKey, L"CyberPest", RRF_RT_REG_SZ, nullptr, nullptr, nullptr) ==
@@ -421,6 +437,12 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                           MF_BYCOMMAND | (app.smoothGraphics ? MF_CHECKED : MF_UNCHECKED));
             return 0;
         }
+        if ((wp & 0xFFF0) == kSysHighFrameRate) {
+            setHighFrameRate(!app.highFrameRate);
+            CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysHighFrameRate,
+                          MF_BYCOMMAND | (app.highFrameRate ? MF_CHECKED : MF_UNCHECKED));
+            return 0;
+        }
         if ((wp & 0xFFF0) == kSysRunAtStartup) {
             setRunAtStartup(!runsAtStartup());
             CheckMenuItem(GetSystemMenu(hwnd, FALSE), kSysRunAtStartup,
@@ -491,15 +513,19 @@ int runWindow(HINSTANCE instance, int show) {
                 L"Smooth graphics (HD)");
     AppendMenuW(system, MF_STRING | (app.experimentalMod ? MF_CHECKED : MF_UNCHECKED), kSysExperimentalMod,
                 L"Experimental hand-fitted art mod (WIP)");
+    AppendMenuW(system, MF_STRING | (app.highFrameRate ? MF_CHECKED : MF_UNCHECKED), kSysHighFrameRate,
+                L"60 FPS presentation (experimental)");
     ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
 
     MSG msg;
     DWORD lastPresented = 0;
+    int framePhase = 0;
     for (;;) {
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
                 app.mixer.stop();
+                setHighFrameRate(false);
                 return int(msg.wParam);
             }
             TranslateMessage(&msg);
@@ -507,14 +533,21 @@ int runWindow(HINSTANCE instance, int show) {
         }
         const DWORD now = GetTickCount();
         app.world.tick(now);
-        if (!app.smoothGraphics || now - lastPresented >= 33) {
+        const DWORD frameInterval = app.highFrameRate ? (framePhase == 2 ? 16 : 17) : 33;
+        if ((!app.smoothGraphics && !app.highFrameRate) || now - lastPresented >= frameInterval) {
             compose(now);
             HDC dc = GetDC(hwnd);
             present(hwnd, dc);
             ReleaseDC(hwnd, dc);
             lastPresented = now;
+            framePhase = (framePhase + 1) % 3;
         }
-        MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+        const DWORD nextInterval = app.highFrameRate ? (framePhase == 2 ? 16 : 17) : 33;
+        const DWORD elapsed = GetTickCount() - lastPresented;
+        const DWORD waitMs = app.smoothGraphics || app.highFrameRate
+                                 ? std::min<DWORD>(10, elapsed < nextInterval ? nextInterval - elapsed : 0)
+                                 : 10;
+        MsgWaitForMultipleObjects(0, nullptr, FALSE, waitMs, QS_ALLINPUT);
     }
 }
 
@@ -594,6 +627,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     std::vector<TypedText> typed;
     bool dump = false;
     bool downloadIa = false;
+    bool highFrameRateOption = false;
     int smoothOption = -1;
     int popupReason = 0;
     DWORD activateAt = 0;
@@ -605,6 +639,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         }
         if (key == L"--hd" || key == L"--classic" || key == L"--mod") {
             smoothOption = key == L"--classic" ? 0 : key == L"--hd" ? 1 : 2;
+            continue;
+        }
+        if (key == L"--60fps") {
+            highFrameRateOption = true;
             continue;
         }
         if (key == L"--download-ia") {
@@ -679,5 +717,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         return runSnapshot(snapshot, duration, std::move(clicks), std::move(drags), std::move(typed), dump,
                            activateAt);
     std::srand(unsigned(std::time(nullptr)));  // as InitInstance does (1000:25dc)
+    setHighFrameRate(highFrameRateOption);
     return runWindow(instance, show);
 }

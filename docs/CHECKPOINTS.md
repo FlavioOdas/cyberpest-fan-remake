@@ -5,6 +5,23 @@ Any agent (Claude, Codex, …) can resume from here.
 
 ## Current state (handoff — read this first)
 
+**Experimental 60 FPS presentation (2026-10-17, Codex):** After the earlier 85%
+usage-guard stop, the user explicitly resumed work on a separate 60 FPS option,
+with a new stop threshold of 93%. `src/main.cpp` now offers `--60fps` and an
+Alt+Space "60 FPS presentation (experimental)" checkbox. It is independent of
+Classic/HD/art-mod selection; combine `--mod --60fps` to use both experiments.
+The live renderer targets a 17/17/16 ms cadence (60 redraws/s), waits only until
+the next deadline, and requests 1 ms Windows timer resolution while enabled,
+releasing it when disabled or on exit. `World::tick` still receives real elapsed
+time, and original FLC frame delays/movement steps remain unchanged: this is
+**not** 60 new animation poses or motion interpolation. The emergency popup is
+unaffected. README explains the distinction. Release build and `git diff --check`
+passed; fresh 20-second `--mod --60fps` and `--mod` snapshots were byte-identical
+(2560×1920), with pest -105 at (486,265,3041). The snapshot harness does not
+exercise the live pacing loop; an actual 60 FPS measurement and physical menu
+toggle test are still outstanding. The option is a target, not a guarantee on
+slower machines. The fish-bowl mod below remains unimplemented.
+
 **Usage-guard stop (2026-10-17, Codex):** The user's 5-hour primary Codex usage
 reached **85%** while beginning the next experimental art-mod asset. Development
 stopped immediately; do not infer that the fish bowl was implemented. The last
@@ -811,3 +828,20 @@ Findings:
   checkpoint alone is force-staged because the user specifically requested a
   committed checkpoint at the usage threshold, overriding the normal private-log
   rule. The user-requested push result is reported separately in the final reply.
+
+### 2026-10-17 — Optional 60 FPS presentation target (Codex)
+- User explicitly resumed work after the 85% stop and requested an optional
+  60 FPS mode before the fish-bowl asset, with a 93% usage stop if needed.
+- Added an independent live-display option via `--60fps` and a checked system-menu
+  command. The renderer alternates 17/17/16 ms frame intervals; the wait deadline
+  adapts instead of always sleeping 10 ms. Opt-in `timeBeginPeriod(1)` is paired
+  with `timeEndPeriod(1)` when turned off or on process exit. The default HD
+  cadence (~30 FPS), Classic behavior, game-time tick and ADM animation delays
+  are otherwise unchanged. This is presentation only, not interpolated motion.
+- Cross-compiled the Release executable successfully. `git diff --check` passed.
+  Two fresh 20-second mod snapshots, one with `--60fps` and one without, were
+  byte-identical at 2560×1920; dump showed the walking pest -105 at
+  (486,265,3041). This checks CLI parsing and unchanged game/snapshot behavior,
+  not physical 60 FPS throughput. A real desktop FPS measurement and menu-click
+  test remain for follow-up. The fish-bowl art and mod-region generalization
+  remain untouched.

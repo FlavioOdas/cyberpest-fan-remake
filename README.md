@@ -54,6 +54,12 @@ for-fun mod—not an automatic filter or a finished remaster. So far it replaces
 room's idle megaphone. All other art remains Smooth HD, and the original `PEST.ADM` is
 still required. The emergency pop-up currently uses Smooth HD in this mode.
 
+**Experimental 60 FPS presentation:** Alt+Space → *60 FPS presentation* or launch with
+`--60fps` (combine with `--mod` if desired). This targets 60 screen redraws per second
+instead of the usual roughly 30 in HD mode. It does not speed up the game or create
+new animation frames: the original sprite timing and movement steps remain unchanged.
+Actual frame rate depends on your PC; the emergency pop-up is unaffected.
+
 When the pest needs you while you're using another program, a *CyberPest Emergency* window
 pops up: **Attend** brings the game back, **Ignore** returns you to what you were doing.
 
