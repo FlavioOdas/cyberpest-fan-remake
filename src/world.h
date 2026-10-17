@@ -95,6 +95,10 @@ public:
     void resetIdle(long now) { inactiveSince_ = now; }                         // 1038:1da0
     void setCheats(const Cheats& c) { cheats_ = c; }
     uint32_t now() const { return now_; }
+    // Render-only smoothing for the experimental 60 FPS mode: draw objects between the frame
+    // boundaries the logic already passed (see src/smooth.h). Pure presentation.
+    void setSmoothAnimation(bool on) { smoothAnimation_ = on; }
+    bool smoothAnimation() const { return smoothAnimation_; }
     GameObject* focus() const { return focus_; }
     void takeFocus(GameObject* obj) { focus_ = obj; }
     void focusText(GameObject* obj) { textFocus_ = obj; }
@@ -136,4 +140,5 @@ private:
     Point2 mouse_{-1, -1};
     bool buttonDown_ = false;
     uint32_t now_ = 0;
+    bool smoothAnimation_ = false;
 };

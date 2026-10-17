@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "classes.h"
+#include "smooth.h"
 #include "symbols.h"
 
 namespace {
@@ -185,9 +186,17 @@ void World::draw(Surface& target, const Palette& palette) const {
         const int frame = std::clamp(s.frame, 0, f.frameCount() - 1);
         Vec3 off = s.offset;
         if (o->facing()) off.x = -off.x;
-        const Vec3 p = o->position() + off;
-        target.blit(f.frames()[size_t(frame)].data(), f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(),
-                    0, false, s.name.c_str());
+        // Experimental smooth animation: draw between the frame boundaries the logic passed.
+        // Skipped while an object is held, was moved outside its animation (a drag or a cue
+        // between frames), or jumped further than plausible motion (endMove/teleport); then
+        // the stored pose no longer describes where the object is and the original picture
+        // is drawn unchanged.
+        const FramePose& pose = o->framePose();
+        const bool smoothed = smoothAnimation_ && pose.smoothable() && !o->held() && pose.to == o->position();
+        const Vec3 p = (smoothed ? pose.positionAt(now_) : o->position()) + off;
+        const uint8_t* pixels = f.frames()[size_t(frame)].data();
+        target.blit(pixels, f.width(), f.height(), p.x - f.width() / 2, p.y - f.height(), 0, false,
+                    s.name.c_str());
         o->drawOverlay(target, palette);
     }
 }

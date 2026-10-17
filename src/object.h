@@ -11,6 +11,7 @@
 
 #include "adm.h"
 #include "flc.h"
+#include "smooth.h"
 #include "vec.h"
 #include "wav.h"
 
@@ -160,6 +161,9 @@ public:
 
     // Drawing/hit testing helpers for World.
     const Sprite* shownSprite() const { return shown_; }
+    // Render-only frame timing for the experimental smooth-animation mode (src/smooth.h);
+    // nothing in the game logic reads it.
+    const FramePose& framePose() const { return framePose_; }
     bool hitTest(Point2 p, const HitArea** area) const;
     void step(uint32_t nowMs);  // advance the current sprite (1000:7df8)
     void retireRunners() { retired_.clear(); }
@@ -197,8 +201,17 @@ protected:
     Vec3 walkVelocity_;       // +0x82
     const Sprite* shown_ = nullptr;
     int enterDepth_ = 0;
+    FramePose framePose_;  // presentation only (src/smooth.h)
 
 private:
+    // Stores where the current frame ends, on every return path of step().
+    struct FramePoseGuard {
+        GameObject& self;
+        ~FramePoseGuard() {
+            self.framePose_.to = self.pos_;
+            self.framePose_.valid = true;
+        }
+    };
     void enterStateModule(const adm::Node& module, int32_t state);
     void runCommands(Runner& r, const adm::Node& state);  // State_Run 1000:8d10
     void runCue(const Cue& c);

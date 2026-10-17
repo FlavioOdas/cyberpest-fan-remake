@@ -27,6 +27,7 @@ add_executable(cyberpest WIN32
     src/adm.cpp
     src/flc.cpp
     src/surface.cpp
+    src/smooth.cpp
     src/upscale.cpp
     src/mod.cpp
     mods/experimental/mod_resources.rc

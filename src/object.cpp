@@ -434,6 +434,13 @@ void GameObject::step(uint32_t nowMs) {  // Sprite_OnFrame 1000:7df8
     Sprite& s = *r.current;
     if (!s.flc || nowMs < s.nextFrameAt) return;
     s.nextFrameAt = nowMs + uint32_t(std::max(s.flc->frameDelayMs(), 20));
+    // Render-only: remember where the object was when this frame began and where it ends up
+    // once the frame's cues, motion, gravity and end-move have run (the guard stores `to` on
+    // every return path). The renderer interpolates across this interval; logic never reads it.
+    framePose_.from = pos_;
+    framePose_.atMs = nowMs;
+    framePose_.durationMs = s.nextFrameAt - nowMs;
+    FramePoseGuard endPose{*this};
     if (s.started) ++s.frame;
     s.started = true;
     const int n = s.frameCount();

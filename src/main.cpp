@@ -2,7 +2,8 @@
 // Options:
 //   --adm <path>        PEST.ADM to load (default: next to the exe, then the current folder)
 //   --snapshot <bmp>    render a frame to an 8-bit BMP and exit (no window, no sound)
-//   --time <ms>         with --snapshot: simulated time before the frame is taken
+//   --time <ms>         with --snapshot: simulated time before the frame is taken; with a live
+//                       run: exit after this many milliseconds (used with --fps-log)
 //   --click <x,y,ms>    with --snapshot: simulated left click (640x480 coordinates); repeatable
 //   --drag <x1,y1,x2,y2,ms>  with --snapshot: hold and move over 400 ms; repeatable
 //   --type <text,ms>   with --snapshot: type into the active text field; repeatable
@@ -16,7 +17,10 @@
 //   --download-ia       download the original game from the Internet Archive into --out
 //                       (default %APPDATA%\CyberPest\PEST.ADM), then exit
 //   --hd / --classic / --mod    choose smoothing, original pixels, or the experimental art mod
-//   --60fps            target 60 presentations per second (original animation timing unchanged)
+//   --60fps            experimental: 60 presentations per second and render-only in-between
+//                      positions for moving objects (original animation timing unchanged)
+//   --fps-log <path>    write one CSV line per presented frame (live run, scripted --click
+//                       events replay, mixer muted) and exit after --time
 #include <windows.h>
 #include <commdlg.h>
 #include <mmsystem.h>
@@ -40,6 +44,7 @@
 #include "audio.h"
 #include "flc.h"
 #include "mod.h"
+#include "smooth.h"
 #include "surface.h"
 #include "symbols.h"
 #include "upscale.h"
@@ -339,6 +344,7 @@ void setHighFrameRate(bool enabled) {
         app.highResolutionTimer = false;
     }
     app.highFrameRate = enabled;
+    app.world.setSmoothAnimation(enabled);  // render-only; original animation timing is untouched
 }
 
 bool runsAtStartup() {
@@ -480,7 +486,28 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-int runWindow(HINSTANCE instance, int show) {
+struct Click {
+    int x, y;
+    DWORD at;
+};
+
+// Millisecond clock for the presentation loop. GetTickCount only advances with the ~15.6 ms
+// system tick, so a 16/17 ms presentation target can only ever fire every other tick (the
+// measured result was ~36 presents/s); QueryPerformanceCounter gives the fine cadence the
+// option promises. Logic keeps receiving plain milliseconds.
+DWORD loopNowMs() {
+    static const double ticksPerMs = [] {
+        LARGE_INTEGER frequency{};
+        QueryPerformanceFrequency(&frequency);
+        return double(frequency.QuadPart) / 1000.0;
+    }();
+    LARGE_INTEGER counter{};
+    QueryPerformanceCounter(&counter);
+    return DWORD(double(counter.QuadPart) / ticksPerMs);
+}
+
+int runWindow(HINSTANCE instance, int show, DWORD runForMs, const std::wstring& fpsLog,
+              std::vector<Click> clicks) {
     WNDCLASSW wc = {};
     wc.lpfnWndProc = windowProc;
     wc.hInstance = instance;
@@ -514,9 +541,30 @@ int runWindow(HINSTANCE instance, int show) {
     AppendMenuW(system, MF_STRING | (app.experimentalMod ? MF_CHECKED : MF_UNCHECKED), kSysExperimentalMod,
                 L"Experimental hand-fitted art mod (WIP)");
     AppendMenuW(system, MF_STRING | (app.highFrameRate ? MF_CHECKED : MF_UNCHECKED), kSysHighFrameRate,
-                L"60 FPS presentation (experimental)");
+                L"60 FPS animation (experimental, WIP)");
     ShowWindow(hwnd, show);  // honours a shortcut's Run: Minimised/Maximised
     app.mixer.start();
+    if (!fpsLog.empty()) app.mixer.setMuted(true);  // a timing run stays quiet
+
+    // --fps-log: one CSV line per presented frame, so live timing can be checked (missed
+    // deadlines vs. repeated original frames) without guessing from snapshots. Scripted
+    // --click events replay so the run can reach a walking pest; the mixer stays muted.
+    std::FILE* log = nullptr;
+    DWORD logStart = 0;
+    if (!fpsLog.empty()) {
+        log = _wfopen(fpsLog.c_str(), L"w");
+        if (log) {
+            logStart = loopNowMs();
+            std::fputs("t_ms,dt_ms,sprite,frame,alpha,x,y\n", log);
+        }
+    }
+    auto closeLog = [&] {
+        if (log) {
+            std::fclose(log);
+            log = nullptr;
+        }
+    };
+    size_t nextClick = 0;
 
     MSG msg;
     DWORD lastPresented = 0;
@@ -524,6 +572,7 @@ int runWindow(HINSTANCE instance, int show) {
     for (;;) {
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
+                closeLog();
                 app.mixer.stop();
                 setHighFrameRate(false);
                 return int(msg.wParam);
@@ -531,7 +580,12 @@ int runWindow(HINSTANCE instance, int show) {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
-        const DWORD now = GetTickCount();
+        const DWORD now = loopNowMs();
+        for (; nextClick < clicks.size() && clicks[nextClick].at <= now - logStart; ++nextClick) {
+            app.world.mouseMove(clicks[nextClick].x, clicks[nextClick].y);
+            app.world.buttonDown(clicks[nextClick].x, clicks[nextClick].y);
+            app.world.buttonUp(clicks[nextClick].x, clicks[nextClick].y);
+        }
         app.world.tick(now);
         const DWORD frameInterval = app.highFrameRate ? (framePhase == 2 ? 16 : 17) : 33;
         if ((!app.smoothGraphics && !app.highFrameRate) || now - lastPresented >= frameInterval) {
@@ -539,22 +593,33 @@ int runWindow(HINSTANCE instance, int show) {
             HDC dc = GetDC(hwnd);
             present(hwnd, dc);
             ReleaseDC(hwnd, dc);
+            if (log) {
+                const GameObject* pest = app.world.find(-105);
+                const Sprite* sprite = pest ? pest->shownSprite() : nullptr;
+                const FramePose& pose = pest ? pest->framePose() : FramePose{};
+                std::fprintf(log, "%u,%u,%s,%d,%.3f,%d,%d\n", unsigned(now - logStart),
+                             unsigned(now - lastPresented), sprite ? sprite->name.c_str() : "-",
+                             sprite ? sprite->frame : -1, pose.valid ? pose.alpha(now) : -1.0f,
+                             pest ? pest->position().x : 0, pest ? pest->position().y : 0);
+                std::fflush(log);
+            }
             lastPresented = now;
             framePhase = (framePhase + 1) % 3;
         }
+        if (runForMs && now - logStart >= runForMs) {
+            closeLog();
+            app.mixer.stop();
+            setHighFrameRate(false);
+            return 0;
+        }
         const DWORD nextInterval = app.highFrameRate ? (framePhase == 2 ? 16 : 17) : 33;
-        const DWORD elapsed = GetTickCount() - lastPresented;
+        const DWORD elapsed = loopNowMs() - lastPresented;
         const DWORD waitMs = app.smoothGraphics || app.highFrameRate
                                  ? std::min<DWORD>(10, elapsed < nextInterval ? nextInterval - elapsed : 0)
                                  : 10;
         MsgWaitForMultipleObjects(0, nullptr, FALSE, waitMs, QS_ALLINPUT);
     }
 }
-
-struct Click {
-    int x, y;
-    DWORD at;
-};
 
 struct Drag {
     int fromX, fromY, toX, toY;
@@ -620,7 +685,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     int argc = 0;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    std::wstring admPath, snapshot, importSource, importTarget;
+    std::wstring admPath, snapshot, importSource, importTarget, fpsLogPath;
     DWORD duration = 0;
     std::vector<Click> clicks;
     std::vector<Drag> drags;
@@ -654,6 +719,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         if (key == L"--adm") admPath = value;
         else if (key == L"--snapshot") snapshot = value;
         else if (key == L"--time") duration = DWORD(_wtoi(value.c_str()));
+        else if (key == L"--fps-log") fpsLogPath = value;
         else if (key == L"--popup") popupReason = _wtoi(value.c_str());
         else if (key == L"--activate") activateAt = DWORD(_wtoi(value.c_str()));
         else if (key == L"--startup") return setRunAtStartup(value == L"on") ? 0 : 1;
@@ -677,6 +743,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     LocalFree(argv);
     app.smoothGraphics = smoothOption < 0 ? snapshot.empty() : smoothOption != 0;
     app.experimentalMod = smoothOption == 2;
+    app.world.setSmoothAnimation(highFrameRateOption);  // render-only in-between frames
     if (!importSource.empty()) {
         std::wstring error;
         if (importTarget.empty()) importTarget = gamedata::dataDirectory() + L"\\PEST.ADM";
@@ -702,7 +769,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         if (snapshot.empty()) return 0;  // the player cancelled
         admPath = L"PEST.ADM";
     }
-    if (!snapshot.empty()) {  // headless test runs: a separate save, never the player's pest
+    if (!snapshot.empty() || !fpsLogPath.empty()) {  // test runs: a separate save, never the player's pest
         wchar_t temp[MAX_PATH];
         const DWORD n = GetTempPathW(MAX_PATH, temp);
         app.world.setSaveDirectory(std::wstring(temp, n) + L"CyberPest-test");
@@ -718,5 +785,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                            activateAt);
     std::srand(unsigned(std::time(nullptr)));  // as InitInstance does (1000:25dc)
     setHighFrameRate(highFrameRateOption);
-    return runWindow(instance, show);
+    // A live run with --fps-log ends after --time (ms) so timing can be measured unattended,
+    // replaying any --click script (the hatch click, then the pest walks around).
+    return runWindow(instance, show, fpsLogPath.empty() ? 0 : duration, fpsLogPath,
+                     fpsLogPath.empty() ? std::vector<Click>{} : std::move(clicks));
 }
