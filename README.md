@@ -63,6 +63,20 @@ are invented. Classic mode reaches up to about 60 redraws per second; in Smooth 
 upscaler currently limits redraws to about 27 per second, so the effect is smaller there.
 Actual frame rate depends on your PC; the emergency pop-up is unaffected.
 
+**Experimental generated in-between animation:** Alt+Space → *Generated in-between animation
+(experimental, WIP)* or launch with `--gen-anim` (combines with the options above). The
+character's pose is moved along the motion between each pair of original animation frames,
+so the limbs travel through the window of each frame instead of snapping pose to pose. The
+pictures are generated at run time from the original artwork only: changed pixels are
+matched between the two poses and displaced; colours are never blended, and whatever cannot
+be matched cleanly still changes at the halfway point — so no new art is shipped and the
+palette look is preserved. Frame timing, cues, sounds, saves and hit-testing are again
+untouched. Known limits (WIP): motion inside one frame is smoothed, but the moving positions
+between frames still need *60 FPS animation* for full smoothness; single-pixel pose wobbles
+cannot be split (there is no half pixel in the original resolution); the first time each
+pose pair appears there is a tiny one-off computation (invisible on most PCs), and the wrap
+from the last pose back to the first is still a hard cut.
+
 When the pest needs you while you're using another program, a *CyberPest Emergency* window
 pops up: **Attend** brings the game back, **Ignore** returns you to what you were doing.
 

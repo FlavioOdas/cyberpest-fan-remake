@@ -11,6 +11,7 @@
 
 #include "adm.h"
 #include "flc.h"
+#include "morph.h"
 #include "object.h"
 #include "surface.h"
 #include "vec.h"
@@ -99,6 +100,10 @@ public:
     // boundaries the logic already passed (see src/smooth.h). Pure presentation.
     void setSmoothAnimation(bool on) { smoothAnimation_ = on; }
     bool smoothAnimation() const { return smoothAnimation_; }
+    // Experimental animation generation: opt-in objects are drawn with generated in-between
+    // pictures between the poses the logic shows (render-only; see src/morph.h).
+    void setMorphAnimation(bool on) { morphAnimation_ = on; }
+    bool morphAnimation() const { return morphAnimation_; }
     GameObject* focus() const { return focus_; }
     void takeFocus(GameObject* obj) { focus_ = obj; }
     void focusText(GameObject* obj) { textFocus_ = obj; }
@@ -141,4 +146,8 @@ private:
     bool buttonDown_ = false;
     uint32_t now_ = 0;
     bool smoothAnimation_ = false;
+    bool morphAnimation_ = false;
+    // Render caches for the generated in-betweens (presentation only, hence mutable).
+    mutable FrameMorpher morpher_;
+    mutable std::vector<uint8_t> morphScratch_;
 };

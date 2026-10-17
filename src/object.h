@@ -118,6 +118,9 @@ public:
     virtual std::string text() const { return {}; }
     virtual void onTextChar(wchar_t) {}
     virtual void drawOverlay(Surface&, const Palette&) const {}
+    // Experimental animation mode: objects that opt in get generated in-between frames
+    // between the poses the logic shows (render-only; see src/morph.h).
+    virtual bool morphFrames() const { return false; }
 
     // ---- engine services used by object classes ----
     void enterState(int32_t state);  // 1000:6100
