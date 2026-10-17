@@ -5,6 +5,49 @@ Any agent (Claude, Codex, …) can resume from here.
 
 ## Current state (handoff — read this first)
 
+**Next request: true 60 FPS animation (2026-10-17, Codex; handoff only):** The
+user clarified that `--60fps` should eventually show *additional animation
+poses and genuinely smoother motion*, not merely repeat the same ADM frame at
+a 60 Hz presentation rate. No code was changed for this request. Current
+`--60fps` from commit `b3d7171` is **presentation-only**, as README already
+says. Keep the faithful Classic/HD engine and original FLC frame/event timing
+unchanged; new in-betweens belong to the explicitly experimental, opt-in mod.
+Do not advertise the current option as true 60 FPS animation. The original
+ADM cannot supply missing poses by itself, and simply increasing `World::tick`
+or shortening `Flc::frameDelayMs()` would speed up gameplay and sound/cues.
+
+**Technical starting points for true animation:** `src/main.cpp:534` runs the
+real-time world tick and `src/main.cpp:536` only schedules 17/17/16 ms redraws.
+`GameObject::step` at `src/object.cpp:427` advances each FLC frame according to
+its own delay, applies per-frame motion at `src/object.cpp:449`, and triggers
+sound/cues at the original boundaries. `World::draw` at `src/world.cpp:175`
+currently draws only the integer `s.frame` at the integer object position; it
+receives no presentation time. A true smooth-motion mod needs a separate
+render-only phase/pose for the interval between original frames, and additional
+sprite images (or carefully reviewed sprite-specific interpolation) for poses
+that deform. Preserve original cue, hit-test, save, AI, physics, and audio
+timing. Decide how rendered-position/hit-test alignment works before enabling
+interpolated translation on draggable objects. The 4× HD scaler benchmark was
+about 15.12 ms/frame on synthetic Linux input, leaving little of a 16.67 ms
+frame budget for extra work; measure the live Windows pipeline and cache or
+optimize before claiming sustained 60 FPS.
+
+**Ordered prototype/acceptance:** (1) Measure actual live presentation intervals
+on the target Windows PC and capture a walking-pest sequence; separate missed
+presentation deadlines from duplicate ADM frames. (2) Prototype one pest walk
+cycle: record frame start/duration without changing `GameObject::step`, draw
+intermediate positions and hand-authored/reviewed additional poses through a
+separate 32-bit mod layer before overlapping sprites/cursor. Avoid whole-screen
+blends/automatic smoothing (the user rejected that look) and never bundle
+original extracted frames. (3) Verify 60 *visibly distinct* movement poses/s
+where motion exists, stable original wall-clock animation duration, cue/sound
+counts, hit-testing, transparency and z-order, then expand asset-by-asset
+(including the nine-frame `OOBOWL.FLC` fish bowl). (4) Only after visual review
+and a sustained live FPS measurement, rename the option to distinguish true
+animation from presentation-only; otherwise keep the honest existing label.
+Snapshots alone cannot establish live frame rate; no true-animation prototype
+or measurements have been made yet.
+
 **Experimental 60 FPS presentation (2026-10-17, Codex):** After the earlier 85%
 usage-guard stop, the user explicitly resumed work on a separate 60 FPS option,
 with a new stop threshold of 93%. `src/main.cpp` now offers `--60fps` and an
@@ -845,3 +888,15 @@ Findings:
   not physical 60 FPS throughput. A real desktop FPS measurement and menu-click
   test remain for follow-up. The fish-bowl art and mod-region generalization
   remain untouched.
+
+### 2026-10-17 — True 60 FPS animation request, handoff only (Codex)
+- The user corrected the target: 60 Hz redraws alone are insufficient; the
+  experimental mode should eventually include more actual animation poses and
+  smooth movement. The existing `b3d7171` option is explicitly only 60 FPS
+  presentation. No new code, rendered asset, or validation run was made here.
+- Inspected `src/main.cpp:534`, `src/object.cpp:427`, and `src/world.cpp:175`:
+  world logic advances FLC frames and cues at original delays; drawing selects
+  only the current integer frame. The proposed seam is render-only interpolation
+  plus individually reviewed supplementary art, not a faster simulation tick.
+  The next agent must first measure live throughput, then prototype one walking
+  pest cycle and verify behavior/visual criteria in the new current-state note.
