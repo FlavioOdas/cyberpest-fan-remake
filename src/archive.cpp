@@ -16,7 +16,7 @@
 namespace archive {
 namespace {
 
-constexpr wchar_t kUserAgent[] = L"CyberPest-Remake/1.0 (+https://github.com/FlavioOdas/cyberpest)";
+constexpr wchar_t kUserAgent[] = L"CyberPest-Remake/1.0 (+https://github.com/FlavioOdas/cyberpest-fan-remake)";
 constexpr UINT kRefresh = WM_APP, kFinished = WM_APP + 1;
 constexpr int kCancelId = 1;
 constexpr int kBaseWidth = 400, kBaseHeight = 150;
