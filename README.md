@@ -2,18 +2,25 @@
 
 A native Windows 10/11 remake of the engine of **CyberPest** (1996, Scratch 'n' Sniff /
 EMG), the 16-bit Windows 3.1 desktop pet. It runs the original game data unchanged, with no
-emulator or extra software. The game's art, sounds and texts are not included: you need
-your own copy of CyberPest (the CD, or the original installer files).
+emulator or extra software. The game's art, sounds and texts are not included: you need the
+original CyberPest game files (the CD or installer). On first run the remake can download a
+preserved copy from the Internet Archive for you, or you can point it at your own.
 
 ## Playing
 
-1. Put `cyberpest.exe` in any folder and run it.
-2. On first run it asks for the game data. Choose either
-   - `DATA.Z` from the original installer (on the CD, or inside `CyberPest.zip`; open the
-     zip in Explorer and extract it first), or
-   - a `PEST.ADM` file from an installed copy (`SLOW\PEST.ADM` is the full-frame-rate one).
+1. Unzip the release anywhere and run `cyberpest.exe`. There is nothing to install.
+2. On first run it asks where to get the original game data (which is not part of the
+   remake). Choose either:
+   - **Internet Archive** - it downloads a preserved copy of the 1996 shareware release
+     from <https://archive.org/details/cyberpest> (about 11 MB), checks it against a known
+     fingerprint and copies the game data to `%APPDATA%\CyberPest`. Nothing is downloaded
+     unless you pick this.
+   - **A file you already have** - the original `CyberPest.zip`, `cyberpest.rar`, `DATA.Z`
+     from the installer, or a `PEST.ADM` from an installed copy (`SLOW\PEST.ADM` is the
+     full-frame-rate one). They are imported directly; there is no need to unpack anything
+     first.
 
-   The data is copied to `%APPDATA%\CyberPest\PEST.ADM`; you can delete the source after.
+   The data lands in `%APPDATA%\CyberPest\PEST.ADM`; you can delete the source file after.
    A `PEST.ADM` next to `cyberpest.exe` is used instead if present.
 3. Fill in the certificate, then look after your pest.
 

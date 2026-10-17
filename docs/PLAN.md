@@ -33,6 +33,6 @@ over redesign; mark every deliberate deviation in that map.
 ## Status (2026-10-17)
 
 M0 done · M1 done (formats) · M2 mostly done (engine + pest understood; other classes listed in
-docs/re/classes.md) · M3 done · M4 in progress (generic objects, walking pest, five shelf
-special classes, certificate, clock and bin ported; megaphone and phone partial, 8 special classes
-unported) · M5 not started.
+docs/re/classes.md) · M3 done · M4 in progress (all 20 special classes ported; the broader pest
+audit and INI cheats remain) · M5 mostly done (desktop integration, first-run import incl. the
+Internet Archive option, player README, packaging; release 1.0.0 published).

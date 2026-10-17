@@ -1,11 +1,13 @@
 #!/bin/bash
-# Build a release zip for players: cyberpest.exe + README.txt (no game data; players supply
-# their own CyberPest). Output: work/dist/CyberPest-remake-<git describe>.zip
+# Build a release zip for players: cyberpest.exe + README.txt (no game data; players bring
+# their own, or the first run downloads it from the Internet Archive with consent).
+# Usage: tools/package.sh [version]  -> work/dist/CyberPest-remake-<version>.zip
+# (version defaults to `git describe --always --dirty`).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source ~/tools/env.sh
 cmake --build build -j16 > work/build.log 2>&1 || { grep -E "error" work/build.log | head -20; exit 1; }
-version="$(git describe --always --dirty)"
+version="${1:-$(git describe --always --dirty)}"
 mkdir -p work/dist
 python3 - "$version" <<'PY'
 import sys, zipfile

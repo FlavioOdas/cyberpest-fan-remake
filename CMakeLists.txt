@@ -20,6 +20,9 @@ add_executable(cyberpest WIN32
     src/punishments.cpp
     src/room_objects.cpp
     src/attention.cpp
+    src/archive.cpp
+    src/gamedata.cpp
+    src/zip.cpp
     src/installer.cpp
     src/adm.cpp
     src/flc.cpp
@@ -29,7 +32,7 @@ add_executable(cyberpest WIN32
 )
 target_compile_definitions(cyberpest PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX
     _WIN32_WINNT=0x0A00 WINVER=0x0A00)  # Windows 10+ (per-monitor DPI APIs)
-target_link_libraries(cyberpest PRIVATE winmm gdi32 user32 shell32 advapi32 comdlg32)
+target_link_libraries(cyberpest PRIVATE winmm gdi32 user32 shell32 advapi32 comdlg32 comctl32 winhttp)
 
 if(MINGW)
     # One self-contained exe: no libc++/libunwind DLLs next to it.

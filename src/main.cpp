@@ -11,7 +11,10 @@
 //   --activate <ms>     with --snapshot: the window is re-activated from another application
 //   --startup on|off    add or remove the "run when Windows starts" entry, then exit
 //   --import <file>     copy PEST.ADM, or extract it from the original installer's DATA.Z,
-//                       to --out (default %APPDATA%\CyberPest\PEST.ADM), then exit
+//                       CyberPest.zip or cyberpest.rar, to --out (default
+//                       %APPDATA%\CyberPest\PEST.ADM), then exit
+//   --download-ia       download the original game from the Internet Archive into --out
+//                       (default %APPDATA%\CyberPest\PEST.ADM), then exit
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -27,8 +30,9 @@
 #include <vector>
 
 #include "adm.h"
+#include "archive.h"
 #include "attention.h"
-#include "installer.h"
+#include "gamedata.h"
 #include "pest.h"
 #include "audio.h"
 #include "flc.h"
@@ -94,71 +98,42 @@ void readIniSettings() {  // App_ReadIniSettings 1000:28ce
 
 bool fileExists(const std::wstring& path) { return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES; }
 
-std::wstring dataDirectory() {  // %APPDATA%\CyberPest, where the save also lives
-    const wchar_t* appData = _wgetenv(L"APPDATA");
-    std::wstring dir = appData ? std::wstring(appData) + L"\\CyberPest" : exeDirectory();
-    CreateDirectoryW(dir.c_str(), nullptr);
-    return dir;
-}
-
-bool readFile(const std::wstring& path, std::vector<uint8_t>* out) {
-    FILE* f = _wfopen(path.c_str(), L"rb");
-    if (!f) return false;
-    std::fseek(f, 0, SEEK_END);
-    const long size = std::ftell(f);
-    std::fseek(f, 0, SEEK_SET);
-    out->resize(size > 0 ? size_t(size) : 0);
-    const bool ok = size > 0 && std::fread(out->data(), 1, out->size(), f) == out->size();
-    std::fclose(f);
-    return ok;
-}
-
-// PEST.ADM from a file the player picked: the ADM itself, or the original installer's DATA.Z
-// (the SLOW = full-frame-rate copy, as the installer used on fast machines).
-bool importGameData(const std::wstring& source, const std::wstring& target, std::wstring* error) {
-    std::vector<uint8_t> bytes, adm;
-    if (!readFile(source, &bytes)) return *error = L"Can't read " + source + L".", false;
-    if (bytes.size() >= 4 && std::memcmp(bytes.data(), "RIFF", 4) == 0) {
-        adm = std::move(bytes);
-    } else {
-        std::string why;
-        if (!installer::extract(bytes, "PEST.ADM", "SLOW", &adm, &why)) return *error = widen(why), false;
-    }
-    const std::wstring tmp = target + L".tmp";
-    FILE* f = _wfopen(tmp.c_str(), L"wb");
-    if (!f) return *error = L"Can't write " + target + L".", false;
-    const bool ok = std::fwrite(adm.data(), 1, adm.size(), f) == adm.size();
-    if (std::fclose(f) != 0 || !ok || !MoveFileExW(tmp.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING)) {
-        DeleteFileW(tmp.c_str());
-        return *error = L"Can't write " + target + L".", false;
-    }
-    return true;
-}
-
-// First run without game data: ask for the original disc or download.
+// First run without game data: offer the Internet Archive copy (the remake ships no game
+// data) or a file the player already has.
 std::wstring askForGameData() {
-    const std::wstring text =
-        L"CyberPest needs the data from your original CyberPest disc or download.\n\n"
-        L"Next, choose the original installer's DATA.Z (on the CD, or inside CyberPest.zip - "
-        L"open the zip in Explorer and extract it first), or a PEST.ADM file.\n\n"
-        L"CyberPest copies what it needs to " + dataDirectory() + L".";
-    const int answer = MessageBoxW(nullptr, text.c_str(), L"CyberPest", MB_OKCANCEL | MB_ICONINFORMATION);
-    if (answer != IDOK) return {};
     for (;;) {
-        wchar_t file[MAX_PATH] = L"";
-        OPENFILENAMEW ofn = {sizeof ofn};
-        ofn.lpstrFilter = L"CyberPest data (DATA.Z, PEST.ADM)\0DATA.Z;PEST.ADM;*.Z;*.ADM\0All files\0*.*\0";
-        ofn.lpstrFile = file;
-        ofn.nMaxFile = MAX_PATH;
-        ofn.lpstrTitle = L"Find DATA.Z or PEST.ADM from your original CyberPest";
-        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
-        if (!GetOpenFileNameW(&ofn)) return {};
-        const std::wstring target = dataDirectory() + L"\\PEST.ADM";
-        std::wstring error;
-        if (importGameData(file, target, &error)) return target;
-        if (MessageBoxW(nullptr, (error + L"\n\nTry another file?").c_str(), L"CyberPest",
-                        MB_RETRYCANCEL | MB_ICONWARNING) != IDRETRY)
-            return {};
+        const std::wstring message =
+            L"CyberPest needs the original game data from 1996, which is not part of this remake.\n\n"
+            L"Yes - download a preserved copy from the Internet Archive\n      " + std::wstring(archive::kItemPage) +
+            L"  (about 11 MB)\n\n"
+            L"No - choose CyberPest.zip, DATA.Z or PEST.ADM from your own copy\n\n"
+            L"Cancel - quit";
+        const int answer = MessageBoxW(nullptr, message.c_str(), L"CyberPest", MB_YESNOCANCEL | MB_ICONINFORMATION);
+        if (answer == IDCANCEL || answer == 0) return {};
+        const std::wstring target = gamedata::dataDirectory() + L"\\PEST.ADM";
+        if (answer == IDYES) {
+            std::wstring error;
+            if (archive::fetchGameData(target, &error, /*showProgress=*/true)) return target;
+            if (MessageBoxW(nullptr, (error + L"\n\nChoose a file from your own copy instead?").c_str(), L"CyberPest",
+                            MB_YESNO | MB_ICONWARNING) != IDYES)
+                return {};
+        }
+        for (;;) {
+            wchar_t file[MAX_PATH] = L"";
+            OPENFILENAMEW ofn = {sizeof ofn};
+            ofn.lpstrFilter =
+                L"CyberPest files (CyberPest.zip, cyberpest.rar, DATA.Z, PEST.ADM)\0*.zip;*.rar;*.Z;*.ADM\0All files\0*.*\0";
+            ofn.lpstrFile = file;
+            ofn.nMaxFile = MAX_PATH;
+            ofn.lpstrTitle = L"Find your CyberPest files (CyberPest.zip, DATA.Z or PEST.ADM)";
+            ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+            if (!GetOpenFileNameW(&ofn)) return {};
+            std::wstring error;
+            if (gamedata::importFile(file, target, &error)) return target;
+            if (MessageBoxW(nullptr, (error + L"\n\nTry another file?").c_str(), L"CyberPest",
+                            MB_RETRYCANCEL | MB_ICONWARNING) != IDRETRY)
+                return {};
+        }
     }
 }
 
@@ -556,12 +531,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     std::vector<Drag> drags;
     std::vector<TypedText> typed;
     bool dump = false;
+    bool downloadIa = false;
     int popupReason = 0;
     DWORD activateAt = 0;
     for (int i = 1; i < argc; ++i) {
         const std::wstring key = argv[i];
         if (key == L"--dump") {
             dump = true;
+            continue;
+        }
+        if (key == L"--download-ia") {
+            downloadIa = true;
             continue;
         }
         if (i + 1 >= argc) break;
@@ -592,14 +572,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     LocalFree(argv);
     if (!importSource.empty()) {
         std::wstring error;
-        if (importTarget.empty()) importTarget = dataDirectory() + L"\\PEST.ADM";
-        if (importGameData(importSource, importTarget, &error)) return 0;
+        if (importTarget.empty()) importTarget = gamedata::dataDirectory() + L"\\PEST.ADM";
+        if (gamedata::importFile(importSource, importTarget, &error)) return 0;
+        std::fwprintf(stderr, L"%ls\n", error.c_str());
+        return 1;
+    }
+    if (downloadIa) {
+        std::wstring error;
+        if (importTarget.empty()) importTarget = gamedata::dataDirectory() + L"\\PEST.ADM";
+        if (archive::fetchGameData(importTarget, &error, /*showProgress=*/false)) return 0;
         std::fwprintf(stderr, L"%ls\n", error.c_str());
         return 1;
     }
     // Game data: --adm, [Files] ADB, next to the exe, imported copy, current folder; else ask.
     if (admPath.empty()) admPath = iniAdbPath();
-    for (const std::wstring& candidate : {exeDirectory() + L"PEST.ADM", dataDirectory() + L"\\PEST.ADM",
+    for (const std::wstring& candidate : {exeDirectory() + L"PEST.ADM", gamedata::dataDirectory() + L"\\PEST.ADM",
                                           std::wstring(L"PEST.ADM")}) {
         if (admPath.empty() && fileExists(candidate)) admPath = candidate;
     }
